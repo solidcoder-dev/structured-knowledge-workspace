@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: Structured Knowledge Workspace API
+  version: 0.1.0
+  description: Initial API contract for the Structured Knowledge Workspace process.
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+tags:
+  - name: System
+    description: Process availability checks; this does not check external dependencies.
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      tags:
+        - System
+      summary: Check process availability
+      description: Returns the availability of the running process, without checking external dependencies.
+      responses:
+        '200':
+          description: Process is available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: UP
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - UP
+          example: UP
