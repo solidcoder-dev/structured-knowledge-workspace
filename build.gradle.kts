@@ -88,3 +88,7 @@ tasks.named("compileKotlin") {
 tasks.named("check") {
     dependsOn("openApiValidate")
 }
+
+tasks.test {
+    useJUnitPlatform()
+}
