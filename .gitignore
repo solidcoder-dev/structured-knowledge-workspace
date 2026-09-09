@@ -1,0 +1,12 @@
+.gradle/
+build/
+.idea/
+*.iml
+.vscode/
+out/
+local.properties
+*.log
+.env
+.env.*
+!.env.example
+.git-real/
