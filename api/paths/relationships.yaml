@@ -24,7 +24,7 @@ entryRelationships:
         required: false
         description: Exact, case-sensitive relationship type.
         schema:
-          $ref: '../components/schemas.yaml#/RelationshipType'
+          $ref: '../components/relationships.yaml#/RelationshipType'
       - $ref: '../components/parameters.yaml#/Cursor'
       - $ref: '../components/parameters.yaml#/Limit'
     responses:
@@ -33,7 +33,7 @@ entryRelationships:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/RelationshipPage'
+              $ref: '../components/relationships.yaml#/RelationshipPage'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
@@ -58,7 +58,7 @@ relationships:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/CreateRelationshipRequest'
+            $ref: '../components/relationships.yaml#/CreateRelationshipRequest'
     responses:
       '201':
         description: Relationship created.
@@ -70,7 +70,7 @@ relationships:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Relationship'
+              $ref: '../components/relationships.yaml#/Relationship'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
@@ -98,7 +98,7 @@ relationship:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Relationship'
+              $ref: '../components/relationships.yaml#/Relationship'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
   delete:
@@ -110,13 +110,39 @@ relationship:
       - $ref: '../components/parameters.yaml#/IfMatch'
     responses:
       '204':
-        description: Relationship deleted, or already absent.
+        description: Relationship deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
       '412':
         $ref: '../components/responses.yaml#/PreconditionFailed'
       '428':
         $ref: '../components/responses.yaml#/PreconditionRequired'
 
 relationshipPosition:
+  delete:
+    operationId: deleteRelationshipPosition
+    tags:
+      - Relationships
+    summary: Remove a Relationship's ordering position
+    description: Leaves the Relationship intact. An absent position is a no-op.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    responses:
+      '200':
+        description: Current Relationship with no position.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/relationships.yaml#/Relationship'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
   parameters:
     - $ref: '../components/parameters.yaml#/WorkspaceId'
     - $ref: '../components/parameters.yaml#/RelationshipId'
@@ -133,7 +159,7 @@ relationshipPosition:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/PositionRequest'
+            $ref: '../components/relationships.yaml#/PositionRequest'
     responses:
       '200':
         description: Position stored.
@@ -143,7 +169,7 @@ relationshipPosition:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Relationship'
+              $ref: '../components/relationships.yaml#/Relationship'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':

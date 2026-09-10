@@ -11,6 +11,6 @@ health:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/HealthResponse'
+              $ref: '../components/common.yaml#/HealthResponse'
             example:
               status: UP

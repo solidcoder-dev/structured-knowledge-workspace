@@ -40,10 +40,12 @@ val generatedOpenApiDir = layout.buildDirectory.dir("generated/openapi")
 
 tasks.named<ValidateTask>("openApiValidate") {
     inputSpec.set(openApiSpec)
+    inputs.files(fileTree("api") { include("**/*.yaml") })
 }
 
 tasks.named<GenerateTask>("openApiGenerate") {
     dependsOn("openApiValidate")
+    inputs.files(fileTree("api") { include("**/*.yaml") })
     inputSpec.set(openApiSpec)
     generatorName.set("kotlin-spring")
     outputDir.set(generatedOpenApiDir.get().asFile.absolutePath)

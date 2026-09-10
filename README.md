@@ -34,6 +34,9 @@ The authoritative contract starts at [`api/openapi.yaml`](api/openapi.yaml) and 
 
 ## Local development
 
+See [HTTP contract conventions](api/README.md) for module ownership, mutation
+preconditions, ordering, retry guarantees and pagination semantics.
+
 The first execution needs Internet access to download Gradle and project dependencies.
 
 ```bash

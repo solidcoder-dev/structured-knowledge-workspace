@@ -13,7 +13,7 @@ workspaces:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/WorkspacePage'
+              $ref: '../components/workspaces.yaml#/WorkspacePage'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
   post:
@@ -28,7 +28,7 @@ workspaces:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/CreateWorkspaceRequest'
+            $ref: '../components/workspaces.yaml#/CreateWorkspaceRequest'
     responses:
       '201':
         description: Workspace created.
@@ -40,7 +40,7 @@ workspaces:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Workspace'
+              $ref: '../components/workspaces.yaml#/Workspace'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '409':
@@ -65,7 +65,7 @@ workspace:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Workspace'
+              $ref: '../components/workspaces.yaml#/Workspace'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
   delete:
@@ -78,7 +78,9 @@ workspace:
       - $ref: '../components/parameters.yaml#/IfMatch'
     responses:
       '204':
-        description: Workspace deleted, or already absent.
+        description: Workspace deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
       '409':
         $ref: '../components/responses.yaml#/Conflict'
       '412':
@@ -102,7 +104,7 @@ workspaceProperty:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/PropertyValueRequest'
+            $ref: '../components/properties.yaml#/PropertyValueRequest'
     responses:
       '200':
         description: Property stored.
@@ -112,7 +114,7 @@ workspaceProperty:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Workspace'
+              $ref: '../components/workspaces.yaml#/Workspace'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
@@ -139,7 +141,7 @@ workspaceProperty:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Workspace'
+              $ref: '../components/workspaces.yaml#/Workspace'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
       '412':

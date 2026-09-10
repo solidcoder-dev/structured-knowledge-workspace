@@ -16,7 +16,7 @@ entries:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/EntryPage'
+              $ref: '../components/entries.yaml#/EntryPage'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
@@ -28,7 +28,9 @@ entries:
     summary: Create an Entry
     description: |
       Creates an Entry and its optional initial Relationships atomically. Every
-      referenced Entry must already exist in the same Workspace.
+      referenced Entry must already exist in the same Workspace. Initial Relationships
+      require client-generated IDs, persisted unchanged. The response and ETag describe
+      the Entry; Relationships are immediately readable using their supplied IDs.
     parameters:
       - $ref: '../components/parameters.yaml#/IdempotencyKey'
     requestBody:
@@ -36,7 +38,7 @@ entries:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/CreateEntryRequest'
+            $ref: '../components/entries.yaml#/CreateEntryRequest'
     responses:
       '201':
         description: Entry created.
@@ -48,7 +50,7 @@ entries:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Entry'
+              $ref: '../components/entries.yaml#/Entry'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
@@ -76,7 +78,7 @@ entry:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Entry'
+              $ref: '../components/entries.yaml#/Entry'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
   delete:
@@ -91,7 +93,9 @@ entry:
       - $ref: '../components/parameters.yaml#/IfMatch'
     responses:
       '204':
-        description: Entry deleted, or already absent.
+        description: Entry deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
       '409':
         $ref: '../components/responses.yaml#/Conflict'
       '412':
@@ -116,7 +120,7 @@ entryProperty:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/PropertyValueRequest'
+            $ref: '../components/properties.yaml#/PropertyValueRequest'
     responses:
       '200':
         description: Property stored.
@@ -126,7 +130,7 @@ entryProperty:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Entry'
+              $ref: '../components/entries.yaml#/Entry'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
@@ -153,7 +157,7 @@ entryProperty:
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/Entry'
+              $ref: '../components/entries.yaml#/Entry'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
       '412':

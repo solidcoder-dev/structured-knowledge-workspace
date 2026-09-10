@@ -18,14 +18,14 @@ transactions:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/TransactionRequest'
+            $ref: '../components/transactions.yaml#/TransactionRequest'
     responses:
       '200':
         description: Transaction committed.
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/TransactionResponse'
+              $ref: '../components/transactions.yaml#/TransactionResponse'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':

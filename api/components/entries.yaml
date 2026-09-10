@@ -1,0 +1,77 @@
+Entry:
+  type: object
+  required:
+    - id
+    - workspaceId
+    - properties
+    - metadata
+  properties:
+    id:
+      type: string
+      format: uuid
+    workspaceId:
+      type: string
+      format: uuid
+    properties:
+      $ref: './properties.yaml#/Properties'
+    metadata:
+      $ref: './common.yaml#/ResourceMetadata'
+
+InitialRelationship:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - direction
+    - otherEntryId
+    - type
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Client-generated ID, known before the atomic create. Duplicate IDs return 409.
+    direction:
+      type: string
+      enum:
+        - OUTGOING
+        - INCOMING
+      description: Direction relative to the Entry being created.
+    otherEntryId:
+      type: string
+      format: uuid
+    type:
+      $ref: './relationships.yaml#/RelationshipType'
+    position:
+      type: integer
+      format: int32
+      minimum: 0
+
+CreateEntryRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Optional client-generated identifier, useful in atomic imports.
+    properties:
+      $ref: './properties.yaml#/Properties'
+    relationships:
+      type: array
+      maxItems: 100
+      description: Relationships created atomically with the Entry.
+      items:
+        $ref: './entries.yaml#/InitialRelationship'
+
+EntryPage:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: './entries.yaml#/Entry'
+    nextCursor:
+      type: string
+      description: Omitted when there is no next page.

@@ -28,7 +28,7 @@ PropertyName:
   required: true
   description: Case-sensitive stable property key, not a user-facing label.
   schema:
-    $ref: './schemas.yaml#/PropertyName'
+    $ref: './properties.yaml#/PropertyName'
 Cursor:
   name: cursor
   in: query

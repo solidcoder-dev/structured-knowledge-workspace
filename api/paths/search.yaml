@@ -19,18 +19,23 @@ search:
       content:
         application/json:
           schema:
-            $ref: '../components/schemas.yaml#/SearchRequest'
+            $ref: '../components/search.yaml#/SearchRequest'
     responses:
       '200':
         description: Ranked page. Cursors preserve a stable continuation of this query.
         content:
           application/json:
             schema:
-              $ref: '../components/schemas.yaml#/SearchResponse'
+              $ref: '../components/search.yaml#/SearchResponse'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
       '422':
         $ref: '../components/responses.yaml#/UnprocessableEntity'
-
+      '503':
+        description: Requested semantic search dependency is unavailable.
+        content:
+          application/problem+json:
+            schema:
+              $ref: '../components/errors.yaml#/Problem'

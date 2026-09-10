@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Structured Knowledge Workspace API
-  version: 0.2.0
+  version: 0.2.1
   description: |
     Framework-independent API for storing and retrieving structured knowledge.
 
@@ -14,6 +14,7 @@ info:
     POST operations that accept `Idempotency-Key` scope the key to the operation target.
     Reusing a key with the same payload returns the original
     result; reusing it with a different payload returns `409 Conflict`.
+    See api/README.md for normative mutation, ordering and pagination rules.
 servers:
   - url: http://localhost:8080
     description: Local development server
@@ -82,38 +83,38 @@ components:
       $ref: './components/headers.yaml#/Location'
   schemas:
     HealthResponse:
-      $ref: './components/schemas.yaml#/HealthResponse'
+      $ref: './components/common.yaml#/HealthResponse'
     PropertyValue:
-      $ref: './components/schemas.yaml#/PropertyValue'
+      $ref: './components/properties.yaml#/PropertyValue'
     PropertyValueRequest:
-      $ref: './components/schemas.yaml#/PropertyValueRequest'
+      $ref: './components/properties.yaml#/PropertyValueRequest'
     Workspace:
-      $ref: './components/schemas.yaml#/Workspace'
+      $ref: './components/workspaces.yaml#/Workspace'
     CreateWorkspaceRequest:
-      $ref: './components/schemas.yaml#/CreateWorkspaceRequest'
+      $ref: './components/workspaces.yaml#/CreateWorkspaceRequest'
     WorkspacePage:
-      $ref: './components/schemas.yaml#/WorkspacePage'
+      $ref: './components/workspaces.yaml#/WorkspacePage'
     Entry:
-      $ref: './components/schemas.yaml#/Entry'
+      $ref: './components/entries.yaml#/Entry'
     CreateEntryRequest:
-      $ref: './components/schemas.yaml#/CreateEntryRequest'
+      $ref: './components/entries.yaml#/CreateEntryRequest'
     EntryPage:
-      $ref: './components/schemas.yaml#/EntryPage'
+      $ref: './components/entries.yaml#/EntryPage'
     Relationship:
-      $ref: './components/schemas.yaml#/Relationship'
+      $ref: './components/relationships.yaml#/Relationship'
     CreateRelationshipRequest:
-      $ref: './components/schemas.yaml#/CreateRelationshipRequest'
+      $ref: './components/relationships.yaml#/CreateRelationshipRequest'
     RelationshipPage:
-      $ref: './components/schemas.yaml#/RelationshipPage'
+      $ref: './components/relationships.yaml#/RelationshipPage'
     PositionRequest:
-      $ref: './components/schemas.yaml#/PositionRequest'
+      $ref: './components/relationships.yaml#/PositionRequest'
     SearchRequest:
-      $ref: './components/schemas.yaml#/SearchRequest'
+      $ref: './components/search.yaml#/SearchRequest'
     SearchResponse:
-      $ref: './components/schemas.yaml#/SearchResponse'
+      $ref: './components/search.yaml#/SearchResponse'
     TransactionRequest:
-      $ref: './components/schemas.yaml#/TransactionRequest'
+      $ref: './components/transactions.yaml#/TransactionRequest'
     TransactionResponse:
-      $ref: './components/schemas.yaml#/TransactionResponse'
+      $ref: './components/transactions.yaml#/TransactionResponse'
     Problem:
-      $ref: './components/schemas.yaml#/Problem'
+      $ref: './components/errors.yaml#/Problem'
