@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Structured Knowledge Workspace API
-  version: 0.2.1
+  version: 0.3.0
   description: |
     Framework-independent API for storing and retrieving structured knowledge.
 
@@ -52,8 +52,6 @@ paths:
     $ref: './paths/relationships.yaml#/relationships'
   /api/v1/workspaces/{workspaceId}/relationships/{relationshipId}:
     $ref: './paths/relationships.yaml#/relationship'
-  /api/v1/workspaces/{workspaceId}/relationships/{relationshipId}/position:
-    $ref: './paths/relationships.yaml#/relationshipPosition'
   /api/v1/workspaces/{workspaceId}/search:
     $ref: './paths/search.yaml#/search'
   /api/v1/workspaces/{workspaceId}/transactions:
@@ -106,8 +104,6 @@ components:
       $ref: './components/relationships.yaml#/CreateRelationshipRequest'
     RelationshipPage:
       $ref: './components/relationships.yaml#/RelationshipPage'
-    PositionRequest:
-      $ref: './components/relationships.yaml#/PositionRequest'
     SearchRequest:
       $ref: './components/search.yaml#/SearchRequest'
     SearchResponse:
@@ -118,3 +114,5 @@ components:
       $ref: './components/transactions.yaml#/TransactionResponse'
     Problem:
       $ref: './components/errors.yaml#/Problem'
+    CreateEntryResponse:
+      $ref: './components/entries.yaml#/CreateEntryResponse'

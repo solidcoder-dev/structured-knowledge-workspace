@@ -17,10 +17,6 @@ CreateWorkspaceRequest:
   type: object
   additionalProperties: false
   properties:
-    id:
-      type: string
-      format: uuid
-      description: Optional client-generated identifier, useful in deterministic imports.
     properties:
       $ref: './properties.yaml#/Properties'
 

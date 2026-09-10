@@ -63,8 +63,6 @@ relationships:
       '201':
         description: Relationship created.
         headers:
-          ETag:
-            $ref: '../components/headers.yaml#/ETag'
           Location:
             $ref: '../components/headers.yaml#/Location'
         content:
@@ -92,9 +90,6 @@ relationship:
     responses:
       '200':
         description: Relationship found.
-        headers:
-          ETag:
-            $ref: '../components/headers.yaml#/ETag'
         content:
           application/json:
             schema:
@@ -106,77 +101,8 @@ relationship:
     tags:
       - Relationships
     summary: Delete a Relationship
-    parameters:
-      - $ref: '../components/parameters.yaml#/IfMatch'
     responses:
       '204':
         description: Relationship deleted.
       '404':
         $ref: '../components/responses.yaml#/NotFound'
-      '412':
-        $ref: '../components/responses.yaml#/PreconditionFailed'
-      '428':
-        $ref: '../components/responses.yaml#/PreconditionRequired'
-
-relationshipPosition:
-  delete:
-    operationId: deleteRelationshipPosition
-    tags:
-      - Relationships
-    summary: Remove a Relationship's ordering position
-    description: Leaves the Relationship intact. An absent position is a no-op.
-    parameters:
-      - $ref: '../components/parameters.yaml#/IfMatch'
-    responses:
-      '200':
-        description: Current Relationship with no position.
-        headers:
-          ETag:
-            $ref: '../components/headers.yaml#/ETag'
-        content:
-          application/json:
-            schema:
-              $ref: '../components/relationships.yaml#/Relationship'
-      '404':
-        $ref: '../components/responses.yaml#/NotFound'
-      '412':
-        $ref: '../components/responses.yaml#/PreconditionFailed'
-      '428':
-        $ref: '../components/responses.yaml#/PreconditionRequired'
-  parameters:
-    - $ref: '../components/parameters.yaml#/WorkspaceId'
-    - $ref: '../components/parameters.yaml#/RelationshipId'
-  put:
-    operationId: setRelationshipPosition
-    tags:
-      - Relationships
-    summary: Set a Relationship's optional ordering position
-    description: Use an atomic Transaction when changing several positions together.
-    parameters:
-      - $ref: '../components/parameters.yaml#/IfMatch'
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            $ref: '../components/relationships.yaml#/PositionRequest'
-    responses:
-      '200':
-        description: Position stored.
-        headers:
-          ETag:
-            $ref: '../components/headers.yaml#/ETag'
-        content:
-          application/json:
-            schema:
-              $ref: '../components/relationships.yaml#/Relationship'
-      '400':
-        $ref: '../components/responses.yaml#/BadRequest'
-      '404':
-        $ref: '../components/responses.yaml#/NotFound'
-      '412':
-        $ref: '../components/responses.yaml#/PreconditionFailed'
-      '422':
-        $ref: '../components/responses.yaml#/UnprocessableEntity'
-      '428':
-        $ref: '../components/responses.yaml#/PreconditionRequired'

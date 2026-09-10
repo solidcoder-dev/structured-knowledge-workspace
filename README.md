@@ -29,6 +29,8 @@ Stack and versions:
 - Spring Boot 3.5.16 with Spring MVC
 - Gradle 8.14.3 using the Kotlin DSL
 - OpenAPI Generator Gradle Plugin 7.19.0
+- PostgreSQL 17.11 for local development and integration tests
+- Spring JDBC and Flyway (versions managed by Spring Boot)
 
 The authoritative contract starts at [`api/openapi.yaml`](api/openapi.yaml) and is split into `paths/` and `components/` files for readability. Kotlin API interfaces and transport models are generated under `build/generated/openapi/` and are intentionally not versioned because they are reproducible build outputs.
 
@@ -37,16 +39,22 @@ The authoritative contract starts at [`api/openapi.yaml`](api/openapi.yaml) and 
 See [HTTP contract conventions](api/README.md) for module ownership, mutation
 preconditions, ordering, retry guarantees and pagination semantics.
 
-The first execution needs Internet access to download Gradle and project dependencies.
+Install JDK 21 and Docker with Compose. The first execution needs Internet access
+for Gradle, dependencies and the PostgreSQL image. Tests use an isolated
+Testcontainers database and require Docker; no test uses your local data.
 
 ```bash
 ./gradlew openApiValidate
 ./gradlew openApiGenerate
 ./gradlew clean build
-./gradlew bootRun
+docker compose up -d --wait postgres
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
-The application listens on `127.0.0.1:8080` by default. Check process availability with:
+Flyway applies migrations on startup and refuses invalid migration history.
+See [persistence conventions](docs/persistence.md) for schema ownership, operational
+configuration and migration rules. The app requires a database to start.
+It listens on `127.0.0.1:8080` by default. Check process availability with:
 
 ```bash
 curl http://localhost:8080/api/v1/health

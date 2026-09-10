@@ -1,116 +1,115 @@
 # HTTP contract conventions
 
-This document supplements OpenAPI 3.0.3 where invariants cannot be expressed by
-its schema vocabulary. The contract is not an implementation.
+The OpenAPI 0.3.0 contract describes the lean model. Business endpoints remain
+unimplemented; the health endpoint and PostgreSQL/Flyway bootstrap are executable.
 
-## Layout
+## Ownership
 
-- `openapi.yaml`: public entry point, paths and named component exports.
-- `paths/`: HTTP operations grouped by resource/capability.
-- `components/properties.yaml`: reusable value and key rules.
-- `components/common.yaml`: transport metadata and process health.
-- `components/workspaces.yaml`, `entries.yaml`, `relationships.yaml`: core resources.
-- `components/search.yaml`, `transactions.yaml`: capability-specific messages.
-- `components/errors.yaml`, `responses.yaml`, `headers.yaml`, `parameters.yaml`:
-  shared HTTP contracts.
+The public entry point is `openapi.yaml`; HTTP operations live in `paths/`.
+Schemas in `components/` are grouped by properties, core resources, search,
+transactions and shared HTTP concerns. Core resources must not depend on
+transaction or search messages. References point directly to the owning file.
 
-References point directly to their owner. Do not duplicate shared schemas or make
-core resources depend on search or transaction messages. Files are grouped by
-responsibility, not one file per field.
+## Identity and properties
 
-## Values and identity
+The server generates UUIDs for Workspaces, Entries and Relationships. Create
+requests reject supplied resource IDs. Database defaults generate IDs when
+inserting; idempotency responses recover those IDs after lost responses.
+There is no permanent retired-ID registry or absolute never-reuse guarantee.
 
-Entry and Workspace properties default to an empty map; empty resources are valid.
-Keys must match PropertyName on creation as well as individual property writes.
-OpenAPI 3.0.3 cannot enforce map key patterns: the adapter must validate them.
-Dates, exact monetary examples and URLs may be strings; their semantics are owned
-by the consuming framework. PropertyValue uses anyOf so an empty homogeneous array
-does not accidentally fail several overlapping oneOf array branches.
+Properties default to an empty object. Keys follow PropertyName and values are
+strings, numbers, booleans or homogeneous scalar arrays; empty arrays are valid.
+Nested objects, nested/mixed arrays and null are invalid. OpenAPI 3.0.3 does not
+express map-key constraints; request validation and the database both enforce them.
+PostgreSQL JSONB also bounds numeric values to its numeric range and rejects U+0000;
+the future adapter must report unsupported values as 422, not an internal error.
+PropertyValue uses anyOf so empty arrays remain valid despite overlapping branches.
 
-IDs are immutable UUIDs, never reused within their resource scope, including after
-deletion. Client-supplied ID collisions return 409. Relationships require live
-endpoints in the same Workspace; missing or foreign endpoints return 404.
-Source, target and type are immutable; changing them means delete plus create.
-The triple (source, target, type) is unique. Cycles and self-links are allowed by
-the kernel; frameworks may prohibit them. No resource moves between Workspaces.
+## Relationships
 
-Initial relationships require client-generated IDs. Successful creation persists
-those IDs unchanged, so returning only the Entry does not hide relationship IDs.
+Edges have an ID, Workspace, source, target, type and creation timestamp.
+They have no version, ETag, position or update operation. To replace an edge,
+delete it and create a new one; the new instance receives a new ID.
+The triple (source, target, type) is unique within a Workspace; duplicates return 409.
+Both endpoints must exist in that Workspace; missing/foreign endpoints return 404.
+Cycles and self-links are allowed; framework-specific restrictions belong above.
 
-## Preconditions and retries
+Entry creation may include initial edges to existing Entries. Its response contains
+the Entry plus all created Relationships in request order, including generated IDs.
+The response ETag refers to the Entry. The whole operation succeeds or rolls back.
+Deleting a Relationship requires only its ID. Deleting an absent edge returns 404.
 
-Every returned resource, including list/search/transaction results, has
-`metadata.etag`: an opaque strong tag including its quotes. Individual resource
-response ETag headers match that value. Clients must not derive tags from version.
-Property and position mutations use the owning resource's tag and return its
-complete representation. This parent-level concurrency convention is deliberate.
+## Mutable resource preconditions
 
-Missing If-Match returns 428; malformed, wildcard or multiple tags return 400;
-an outdated tag returns 412. No-op writes preserve version and updatedAt.
-Conditional DELETE of an absent resource returns 404, not an unconditional 204.
-Successful DELETE returns 204; deleting an Entry with any relationships or a
-nonempty Workspace returns 409. No cascades, including implicit comment deletion.
+Workspace and Entry responses include metadata.etag and metadata.version, also in
+lists/search/transaction results. ETags are opaque and include quotes. The ETag
+header agrees with the metadata value; clients must not derive it from version.
+Property mutations use the owning Entry/Workspace tag and return that resource.
+Only effective changes increment version and update updatedAt; no-ops preserve both.
+Missing If-Match returns 428; malformed/multiple/wildcard tags return 400, stale
+tags 412. Conditional deletion of an absent Entry/Workspace returns 404.
+Successful resource deletion returns 204. A Workspace with Entries, or an Entry
+with any incoming/outgoing edge, cannot be deleted (409). No automatic cascades.
 
-Idempotency keys are scoped to method plus canonical path (and authenticated
-principal when authentication is introduced). Successful results, status and
-headers are retained for at least 24 hours. Equivalent JSON bodies with reordered
-object keys count as identical; array order remains significant. A different
-payload returns 409 IDEMPOTENCY_KEY_REUSED. Concurrent identical requests are
-serialized or return 409 IDEMPOTENCY_IN_PROGRESS; no duplicate mutation occurs.
-After expiry, a new execution is possible; supplied UUIDs still cannot be reused.
-Invalid or rolled-back requests do not reserve the key.
+## Idempotency
+
+Scope is HTTP method plus canonical route, including Workspace and the authenticated
+principal when authentication is added. Keys must fit 255 UTF-8 bytes.
+Equivalent JSON bodies ignore object-key order but preserve array order and values.
+Successful responses, including status, Location, ETag and body, are retained at
+least 24 hours. A different payload under the same live key returns 409
+IDEMPOTENCY_KEY_REUSED. Same-key requests must be serialized before executing any
+mutation. The application may use a transaction-scoped advisory lock derived from
+scope/key; a hash collision only serializes unrelated requests.
+A unique completed-response row alone is not a substitute for coordinating execution.
+
+Store the completed response in the same transaction as the business writes.
+Rolled-back requests leave no record. Expired records are removed/replaced under
+the same lock; after expiry a retry may execute again. Cleanup uses expires_at.
 
 ## Atomic transactions
 
-Mutations execute in order and roll back together on any failure. expectedVersion
-is checked against the state immediately before that mutation, including earlier
-mutations in this transaction. Each effective write increments version once.
-New resources start at 1. Missing resources return 404, stale expectedVersion
-returns 409 VERSION_CONFLICT, and semantic violations return 422.
+All mutations execute in array order in one PostgreSQL transaction. CREATE_ENTRY
+may declare a unique localRef such as capability. Subsequent CREATE_RELATIONSHIP
+uses sourceEntryRef/targetEntryRef, either an existing UUID or @capability.
+Duplicate, unknown or forward local references return 422 and roll back everything.
+Initial relationships inside CREATE_ENTRY refer only to already persisted UUIDs;
+use CREATE_RELATIONSHIP to connect new Entries. createdEntryIds maps declared local
+references to generated UUIDs. entries/relationships include surviving affected
+resources once, at their final state. Initial relationships are included too.
+Updates/deletes of Entries use persisted UUIDs and expectedVersion.
+expectedVersion is checked immediately before each mutation; each effective change
+increments once, including multiple writes to the same Entry within the transaction.
+New Entries start at version 1. Stale versions return 409 VERSION_CONFLICT.
+Delete edges explicitly before deleting their endpoints. A failed operation rolls
+back the entire request and identifies its index in the problem detail pointer.
 
-Create Entries before referencing them. Explicitly delete relationships before
-deleting their endpoints. Swapping positions requires two SET_RELATIONSHIP_POSITION
-mutations in one transaction. Gaps/ties are legal and no implicit renumbering occurs.
-Results contain each surviving changed resource once, at its final version.
-Created-then-deleted resources appear only in deleted IDs. Error pointers identify
-the failed mutation, for example /mutations/2/expectedVersion.
+## Pagination and search
 
-## Ordering and retrieval
+Lists use keyset pagination ordered by (created_at, id) ascending within a Workspace.
+Cursors are opaque, bound to route, Workspace, filters and order; malformed or
+mismatched cursors return 400. No query session or snapshot is persisted.
+Inserts/deletes between pages can affect results; these listings are not exports
+of a frozen point in time. Relationship lists use the same order; BOTH emits
+self-links once. The database's ordered indexes support these listing paths.
 
-Entry/Workspace listings order by (createdAt, id) ascending. Relationship listings
-order by (sourceEntryId, type, position absent-last, id), all ascending; self-links
-are returned once for BOTH. Position groups are (sourceEntryId, type). Setting a
-position affects only that relationship; DELETE position removes the ordering hint.
+Search orders by score descending with id as tie-breaker. Its cursor includes
+continuation values; reranking can cause repeats or omissions across pages.
+Scores are query-local; exact/filter-only matches score 1. Highlights are plain text.
+Filters and graph candidates intersect before ranking. Graph traversal excludes
+the starting node, deduplicates visits, follows at most maxDepth and rejects more
+than 10,000 visited nodes with 422 GRAPH_LIMIT_EXCEEDED.
+EQUALS compares the entire JSON value including array order. JSONB containment
+alone is insufficient for array equality. TEXT/EXACT must read committed data;
+semantic indexes are derived and may lag. Deleted Entries are never returned.
+Unavailable semantic retrieval returns 503 for SEMANTIC/HYBRID.
+Search implementations and embedding storage are deferred; the bootstrap adds
+only the core JSONB and relational indexes, not a semantic service.
 
-Graph search follows distinct reachable nodes up to maxDepth, excludes the starting
-node, and prevents revisiting nodes through cycles. Omitted/empty relationshipTypes
-means all types. Missing starting Entry returns 404. Graph traversal must be bounded;
-if more than 10,000 distinct nodes must be visited, return 422 GRAPH_LIMIT_EXCEEDED,
-never silently return an incomplete graph.
+## Scope and validation
 
-Cursors are opaque, bound to endpoint, Workspace and normalized query/filter/order,
-and expire after 15 minutes. Malformed, mismatched or expired cursors return 400.
-The first page pins candidate IDs and their order for subsequent pages; new inserts
-do not enter that sequence. Deleted resources are skipped, surviving resources use
-current representations and must still satisfy exact/graph filters. A page may
-therefore contain fewer than limit results and still have nextCursor.
-
-Search ranks by score descending with id as tie-breaker; scores are query-local,
-not probabilities or comparable across queries/models. Exact/filter-only matches
-have score 1. Highlights are plain text, never trusted HTML. EXACT matches complete
-string properties or complete string array elements. TEXT and HYBRID provide
-read-after-write visibility for lexical matches, not guaranteed top-k inclusion.
-Semantic indexing may lag; embeddings are derived, versioned and rebuildable.
-Stale semantic candidates must be checked against live Entries before returning.
-If semantic service is unavailable, return 503 for SEMANTIC/HYBRID; do not silently
-change the requested mode. TEXT and EXACT remain independently usable.
-
-## Validation and scope
-
-Run `./gradlew clean build` before merging; it includes OpenAPI validation and generation.
-YAML parsing and resolved references alone do not prove generated Kotlin compiles
-or that anyOf/oneOf models serialize correctly. Do not edit generated DTOs.
-
-Authentication, authorization and append-only audit storage are deferred. Local
-operation without them is not a production security boundary. Domain authors and
-business history properties are not a trusted technical audit log.
+Flyway owns the database schema; see ../docs/persistence.md.
+Run `./gradlew clean build` to validate/generate OpenAPI, compile Kotlin and run
+PostgreSQL integration tests. This requires JDK 21, Docker and dependency access.
+Authentication, authorization and trusted audit storage remain separate future work.
+Business author/history properties do not constitute an immutable audit log.
