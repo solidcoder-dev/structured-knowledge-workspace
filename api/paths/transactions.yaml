@@ -8,7 +8,7 @@ transactions:
     summary: Execute an atomic set of mutations
     description: |
       Executes every mutation or none. Mutations run in request order, allowing a
-      client to create Entries first and then connect them. Expected resource versions
+      client to create Entries first and then connect them. Expected Entry versions
       prevent lost updates. A failed invariant or stale version rolls back the entire
       transaction.
     parameters:

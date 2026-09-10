@@ -22,7 +22,7 @@ search:
             $ref: '../components/search.yaml#/SearchRequest'
     responses:
       '200':
-        description: Ranked page. Cursors preserve a stable continuation of this query.
+        description: Ranked page. Results may change between pages; no snapshot is retained.
         content:
           application/json:
             schema:

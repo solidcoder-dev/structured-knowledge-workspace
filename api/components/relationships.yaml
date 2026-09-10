@@ -13,7 +13,7 @@ Relationship:
     - sourceEntryId
     - targetEntryId
     - type
-    - metadata
+    - createdAt
   properties:
     id:
       type: string
@@ -29,16 +29,10 @@ Relationship:
       format: uuid
     type:
       $ref: './relationships.yaml#/RelationshipType'
-    position:
-      type: integer
-      format: int32
-      minimum: 0
-      description: |
-        Order within outgoing relationships sharing sourceEntryId and type.
-        Ascending positions come first, absent positions last; ties use id ascending.
-        Gaps and ties are allowed. Setting a position never renumbers other relationships.
-    metadata:
-      $ref: './common.yaml#/ResourceMetadata'
+    createdAt:
+      type: string
+      format: date-time
+      readOnly: true
 
 CreateRelationshipRequest:
   type: object
@@ -48,9 +42,6 @@ CreateRelationshipRequest:
     - targetEntryId
     - type
   properties:
-    id:
-      type: string
-      format: uuid
     sourceEntryId:
       type: string
       format: uuid
@@ -59,10 +50,6 @@ CreateRelationshipRequest:
       format: uuid
     type:
       $ref: './relationships.yaml#/RelationshipType'
-    position:
-      type: integer
-      format: int32
-      minimum: 0
 
 RelationshipPage:
   type: object
@@ -75,14 +62,3 @@ RelationshipPage:
         $ref: './relationships.yaml#/Relationship'
     nextCursor:
       type: string
-
-PositionRequest:
-  type: object
-  additionalProperties: false
-  required:
-    - position
-  properties:
-    position:
-      type: integer
-      format: int32
-      minimum: 0

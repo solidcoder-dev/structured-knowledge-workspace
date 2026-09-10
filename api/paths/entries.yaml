@@ -6,7 +6,7 @@ entries:
     tags:
       - Entries
     summary: List Entries
-    description: Returns a stable page ordered by creation time and identifier.
+    description: Returns a page ordered by creation time and identifier.
     parameters:
       - $ref: '../components/parameters.yaml#/Cursor'
       - $ref: '../components/parameters.yaml#/Limit'
@@ -28,9 +28,8 @@ entries:
     summary: Create an Entry
     description: |
       Creates an Entry and its optional initial Relationships atomically. Every
-      referenced Entry must already exist in the same Workspace. Initial Relationships
-      require client-generated IDs, persisted unchanged. The response and ETag describe
-      the Entry; Relationships are immediately readable using their supplied IDs.
+      referenced Entry must already exist in the same Workspace. The response includes the Entry and every
+      created Relationship with server-generated IDs. ETag describes the Entry.
     parameters:
       - $ref: '../components/parameters.yaml#/IdempotencyKey'
     requestBody:
@@ -50,7 +49,7 @@ entries:
         content:
           application/json:
             schema:
-              $ref: '../components/entries.yaml#/Entry'
+              $ref: '../components/entries.yaml#/CreateEntryResponse'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
       '404':

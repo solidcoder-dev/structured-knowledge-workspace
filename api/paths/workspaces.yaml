@@ -9,7 +9,7 @@ workspaces:
       - $ref: '../components/parameters.yaml#/Limit'
     responses:
       '200':
-        description: Stable page ordered by creation time and identifier.
+        description: Page ordered by creation time and identifier.
         content:
           application/json:
             schema:

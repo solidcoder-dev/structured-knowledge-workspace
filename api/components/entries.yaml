@@ -21,15 +21,10 @@ InitialRelationship:
   type: object
   additionalProperties: false
   required:
-    - id
     - direction
     - otherEntryId
     - type
   properties:
-    id:
-      type: string
-      format: uuid
-      description: Client-generated ID, known before the atomic create. Duplicate IDs return 409.
     direction:
       type: string
       enum:
@@ -41,19 +36,11 @@ InitialRelationship:
       format: uuid
     type:
       $ref: './relationships.yaml#/RelationshipType'
-    position:
-      type: integer
-      format: int32
-      minimum: 0
 
 CreateEntryRequest:
   type: object
   additionalProperties: false
   properties:
-    id:
-      type: string
-      format: uuid
-      description: Optional client-generated identifier, useful in atomic imports.
     properties:
       $ref: './properties.yaml#/Properties'
     relationships:
@@ -75,3 +62,15 @@ EntryPage:
     nextCursor:
       type: string
       description: Omitted when there is no next page.
+
+CreateEntryResponse:
+  type: object
+  required: [entry, relationships]
+  properties:
+    entry:
+      $ref: './entries.yaml#/Entry'
+    relationships:
+      type: array
+      description: All initial relationships, including server-generated IDs, in request order.
+      items:
+        $ref: './relationships.yaml#/Relationship'

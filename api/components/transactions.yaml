@@ -1,20 +1,17 @@
 CreateEntryMutation:
   type: object
   additionalProperties: false
-  required:
-    - operation
-    - entry
+  required: [operation, entry]
   properties:
     operation:
       type: string
-      enum:
-        - CREATE_ENTRY
+      enum: [CREATE_ENTRY]
+    localRef:
+      type: string
+      pattern: '^[a-z][a-z0-9_-]{0,63}$'
+      description: Optional unique local name for this new Entry.
     entry:
-      allOf:
-        - $ref: './entries.yaml#/CreateEntryRequest'
-        - type: object
-          required:
-            - id
+      $ref: './entries.yaml#/CreateEntryRequest'
 
 SetEntryPropertyMutation:
   type: object
@@ -97,7 +94,7 @@ CreateRelationshipMutation:
       enum:
         - CREATE_RELATIONSHIP
     relationship:
-      $ref: './relationships.yaml#/CreateRelationshipRequest'
+      $ref: './transactions.yaml#/TransactionRelationshipRequest'
 
 DeleteRelationshipMutation:
   type: object
@@ -105,7 +102,6 @@ DeleteRelationshipMutation:
   required:
     - operation
     - relationshipId
-    - expectedVersion
   properties:
     operation:
       type: string
@@ -114,35 +110,6 @@ DeleteRelationshipMutation:
     relationshipId:
       type: string
       format: uuid
-    expectedVersion:
-      type: integer
-      format: int64
-      minimum: 1
-
-SetRelationshipPositionMutation:
-  type: object
-  additionalProperties: false
-  required:
-    - operation
-    - relationshipId
-    - expectedVersion
-    - position
-  properties:
-    operation:
-      type: string
-      enum:
-        - SET_RELATIONSHIP_POSITION
-    relationshipId:
-      type: string
-      format: uuid
-    expectedVersion:
-      type: integer
-      format: int64
-      minimum: 1
-    position:
-      type: integer
-      format: int32
-      minimum: 0
 
 Mutation:
   oneOf:
@@ -152,7 +119,6 @@ Mutation:
     - $ref: './transactions.yaml#/DeleteEntryMutation'
     - $ref: './transactions.yaml#/CreateRelationshipMutation'
     - $ref: './transactions.yaml#/DeleteRelationshipMutation'
-    - $ref: './transactions.yaml#/SetRelationshipPositionMutation'
   discriminator:
     propertyName: operation
     mapping:
@@ -162,7 +128,6 @@ Mutation:
       DELETE_ENTRY: './transactions.yaml#/DeleteEntryMutation'
       CREATE_RELATIONSHIP: './transactions.yaml#/CreateRelationshipMutation'
       DELETE_RELATIONSHIP: './transactions.yaml#/DeleteRelationshipMutation'
-      SET_RELATIONSHIP_POSITION: './transactions.yaml#/SetRelationshipPositionMutation'
 
 TransactionRequest:
   type: object
@@ -175,19 +140,26 @@ TransactionRequest:
       minItems: 1
       maxItems: 100
       description: |
-        Mutations execute atomically in array order. Entries created here must use
-        client-generated IDs so later mutations can reference them.
+        Mutations execute atomically in array order. CREATE_ENTRY may declare localRef;
+        later CREATE_RELATIONSHIP operations can use @localRef in their endpoint references.
       items:
         $ref: './transactions.yaml#/Mutation'
 
 TransactionResponse:
   type: object
   required:
+    - createdEntryIds
     - entries
     - relationships
     - deletedEntryIds
     - deletedRelationshipIds
   properties:
+    createdEntryIds:
+      type: object
+      description: Maps declared localRef names to server-generated UUIDs.
+      additionalProperties:
+        type: string
+        format: uuid
     entries:
       type: array
       description: Current representations of created or changed Entries.
@@ -208,3 +180,20 @@ TransactionResponse:
       items:
         type: string
         format: uuid
+TransactionRelationshipRequest:
+  type: object
+  additionalProperties: false
+  required: [sourceEntryRef, targetEntryRef, type]
+  properties:
+    sourceEntryRef:
+      $ref: './transactions.yaml#/EntryReference'
+    targetEntryRef:
+      $ref: './transactions.yaml#/EntryReference'
+    type:
+      $ref: './relationships.yaml#/RelationshipType'
+
+EntryReference:
+  type: string
+  pattern: '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|@[a-z][a-z0-9_-]{0,63})$'
+  description: Persisted UUID or @localRef from an earlier CREATE_ENTRY.
+  example: '@capability'
