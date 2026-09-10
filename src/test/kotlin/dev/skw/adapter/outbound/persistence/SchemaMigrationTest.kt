@@ -47,7 +47,7 @@ class SchemaMigrationTest @Autowired constructor(
         assertEquals(0, flyway.info().pending().size)
         assertEquals(0, flyway.migrate().migrationsExecuted)
         assertEquals(
-            listOf("1", "2"),
+            listOf("1", "2", "3"),
             flyway.info().applied().mapNotNull { it.version?.version },
         )
     }
@@ -163,7 +163,8 @@ class SchemaMigrationTest @Autowired constructor(
 
     @Test
     fun `idempotency results are unique and roll back with business writes`() {
-        val scope = "POST /api/v1/workspaces/" + workspace()
+        val workspace = workspace()
+        val scope = "POST /api/v1/workspaces/$workspace"
         val key = UUID.randomUUID().toString()
         val insert = """INSERT INTO skw.idempotency_requests
             (scope, key, request_hash, response_status, response_headers, response_body, expires_at)
@@ -176,6 +177,7 @@ class SchemaMigrationTest @Autowired constructor(
         val rolledBackKey = UUID.randomUUID().toString()
         assertThrows(IllegalStateException::class.java) {
             transaction.executeWithoutResult {
+                entry(workspace)
                 jdbc.update(insert, scope, rolledBackKey, "b".repeat(64))
                 error("simulate later application failure")
             }
@@ -184,5 +186,25 @@ class SchemaMigrationTest @Autowired constructor(
             "SELECT count(*) FROM skw.idempotency_requests WHERE scope = ? AND key = ?",
             Long::class.java, scope, rolledBackKey,
         ))
+        assertEquals(0L, jdbc.queryForObject(
+            "SELECT count(*) FROM skw.entries WHERE workspace_id = ?",
+            Long::class.java, workspace,
+        ))
+    }
+
+    @Test
+    fun `idempotency keys accept visible ASCII and enforce byte boundaries`() {
+        val scope = UUID.randomUUID().toString()
+        val insert = """INSERT INTO skw.idempotency_requests
+            (scope, key, request_hash, response_status, expires_at)
+            VALUES (?, ?, ?, 201, statement_timestamp() + INTERVAL '24 hours')"""
+        for (key in listOf("!", "~", "a".repeat(255))) {
+            assertEquals(1, jdbc.update(insert, scope, key, "a".repeat(64)))
+        }
+        for (key in listOf("", "a".repeat(256), "é", "é".repeat(200), "has space", "tab\tkey", "line\nkey")) {
+            assertThrows(DataIntegrityViolationException::class.java) {
+                jdbc.update(insert, scope, key, "a".repeat(64))
+            }
+        }
     }
 }

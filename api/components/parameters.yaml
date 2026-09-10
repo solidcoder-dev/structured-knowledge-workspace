@@ -60,8 +60,9 @@ IdempotencyKey:
   name: Idempotency-Key
   in: header
   required: true
-  description: Retry-safe key scoped to the operation target.
+  description: Retry-safe key scoped to the operation target; visible ASCII only, without spaces.
   schema:
     type: string
     minLength: 1
     maxLength: 255
+    pattern: '^[!-~]+$'

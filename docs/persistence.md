@@ -10,6 +10,8 @@ NamedParameterJdbcTemplate and the JDBC transaction manager; no ORM owns DDL.
 Flyway creates the skw schema and its flyway_schema_history table.
 V1 defines workspaces, entries and immutable relationships.
 V2 adds completed idempotency responses, including headers and expiration.
+V3 aligns relationship pagination indexes and restricts idempotency keys to visible
+ASCII. It validates existing rows and fails if incompatible keys are present.
 Use schema-qualified SQL in adapters; do not rely on a caller's search_path.
 
 IDs default to gen_random_uuid(), provided by PostgreSQL without an extension.
@@ -27,7 +29,9 @@ arrays and the contract's size limits. PostgreSQL numeric/Unicode limits also
 apply. Avoid converting JSON numbers through Double in future adapters.
 
 List indexes cover created_at/id within each Workspace. The unique edge index
-supports outgoing traversal; a separate index covers incoming links.
+supports outgoing traversal; per-source and per-target indexes include created_at/id
+for keyset pagination and foreign-key checks. Optional type filters are residual
+filters; tune additional indexes only with measured queries.
 GIN jsonb_ops supports property containment/existence candidates; equality checks
 must additionally preserve whole-array order. Text and vector indexes will be
 chosen with their actual search queries, rather than materializing embeddings now.
@@ -74,7 +78,7 @@ execute the mutation and persist the response in the same transaction.
 The primary key alone cannot prevent duplicated side effects before its insert.
 Canonicalize request JSON before SHA-256 hashing. Scope includes method, route,
 Workspace and eventually principal; keep its UTF-8 representation within 1024 bytes
-and keys within 255 bytes to bound B-tree entry size.
+and keys to 1–255 visible ASCII characters without spaces to bound B-tree entry size.
 Header JSON must preserve replay-relevant headers, including multiple values.
 Cleanup deletes expired rows in bounded batches; no scheduler is included yet.
 Do not retain transaction locks across remote embedding or other network calls.

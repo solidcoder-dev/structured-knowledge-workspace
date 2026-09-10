@@ -1,6 +1,6 @@
 # HTTP contract conventions
 
-The OpenAPI 0.3.0 contract describes the lean model. Business endpoints remain
+The OpenAPI 0.3.1 contract describes the lean model. Business endpoints remain
 unimplemented; the health endpoint and PostgreSQL/Flyway bootstrap are executable.
 
 ## Ownership
@@ -54,7 +54,8 @@ with any incoming/outgoing edge, cannot be deleted (409). No automatic cascades.
 ## Idempotency
 
 Scope is HTTP method plus canonical route, including Workspace and the authenticated
-principal when authentication is added. Keys must fit 255 UTF-8 bytes.
+principal when authentication is added. Keys contain 1–255 visible ASCII characters
+(U+0021 through U+007E), without spaces; character and byte limits therefore agree.
 Equivalent JSON bodies ignore object-key order but preserve array order and values.
 Successful responses, including status, Location, ETag and body, are retained at
 least 24 hours. A different payload under the same live key returns 409
