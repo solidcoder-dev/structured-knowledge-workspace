@@ -1,0 +1,16 @@
+health:
+  get:
+    operationId: getHealth
+    tags:
+      - System
+    summary: Check process availability
+    description: Does not check external dependencies.
+    responses:
+      '200':
+        description: Process is available.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/HealthResponse'
+            example:
+              status: UP

@@ -10,9 +10,17 @@ Structured Knowledge Workspace is a framework-independent tool for people and ag
 
 The project uses an API-first and contract-first approach. The OpenAPI document is the source of truth for the HTTP contract; endpoints are not generated from code annotations.
 
-## Current bootstrap
+## Current contract
 
-This repository is a local bootstrap. Business capabilities are pending; the current implementation only exposes the initial process availability endpoint.
+The API contract defines the framework-independent kernel:
+
+- Workspaces isolate knowledge and search.
+- Entries store generic scalar Properties and homogeneous scalar arrays.
+- Relationships connect Entries directionally inside one Workspace.
+- Search combines exact, full-text, semantic and bounded graph retrieval.
+- Transactions let clients and agents change several resources atomically.
+
+Domain concepts such as goals, capabilities, behaviours, comments, statuses and authors are not built-in resource types. A consuming framework represents them with Entries, Properties and Relationships and owns their semantic validation.
 
 Stack and versions:
 
@@ -22,7 +30,7 @@ Stack and versions:
 - Gradle 8.14.3 using the Kotlin DSL
 - OpenAPI Generator Gradle Plugin 7.19.0
 
-The authoritative contract is [`api/openapi.yaml`](api/openapi.yaml). Kotlin API interfaces and transport models are generated under `build/generated/openapi/` and are intentionally not versioned because they are reproducible build outputs.
+The authoritative contract starts at [`api/openapi.yaml`](api/openapi.yaml) and is split into `paths/` and `components/` files for readability. Kotlin API interfaces and transport models are generated under `build/generated/openapi/` and are intentionally not versioned because they are reproducible build outputs.
 
 ## Local development
 
@@ -47,4 +55,4 @@ Expected response:
 {"status":"UP"}
 ```
 
-This endpoint checks process availability only; it does not check external dependencies. Entries, properties, collections, relationships, search, and change governance remain future product capabilities.
+This endpoint checks process availability only; it does not check external dependencies. The business endpoints are contract definitions and do not have implementations yet. Authentication, authorization and a trustworthy append-only technical audit log remain future cross-cutting capabilities; business history can already be represented as Entries.

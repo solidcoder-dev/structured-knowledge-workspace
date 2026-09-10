@@ -1,0 +1,36 @@
+BadRequest:
+  description: Malformed request.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/Problem'
+NotFound:
+  description: Resource not found in this Workspace.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/Problem'
+Conflict:
+  description: Request conflicts with current resource state or an idempotency key.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/Problem'
+PreconditionFailed:
+  description: The supplied entity tag does not match the current resource version.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/Problem'
+UnprocessableEntity:
+  description: Request is syntactically valid but violates contract invariants.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/Problem'
+PreconditionRequired:
+  description: "`If-Match` is required for this mutation."
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/Problem'

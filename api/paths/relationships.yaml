@@ -1,0 +1,156 @@
+entryRelationships:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/EntryId'
+  get:
+    operationId: listEntryRelationships
+    tags:
+      - Relationships
+    summary: List an Entry's Relationships
+    description: Supports graph traversal without requiring clients to scan the Workspace.
+    parameters:
+      - name: direction
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - INCOMING
+            - OUTGOING
+            - BOTH
+          default: BOTH
+      - name: type
+        in: query
+        required: false
+        description: Exact, case-sensitive relationship type.
+        schema:
+          $ref: '../components/schemas.yaml#/RelationshipType'
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: Relationship page.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/RelationshipPage'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+
+relationships:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+  post:
+    operationId: createRelationship
+    tags:
+      - Relationships
+    summary: Create a Relationship
+    description: |
+      Both Entries must exist in the same Workspace. An exact duplicate identified
+      by source Entry, target Entry and type returns 409. If a connection needs its
+      own data or lifecycle, clients should model it as an intermediate Entry.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas.yaml#/CreateRelationshipRequest'
+    responses:
+      '201':
+        description: Relationship created.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+          Location:
+            $ref: '../components/headers.yaml#/Location'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/Relationship'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+
+relationship:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/RelationshipId'
+  get:
+    operationId: getRelationship
+    tags:
+      - Relationships
+    summary: Get a Relationship
+    responses:
+      '200':
+        description: Relationship found.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/Relationship'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+  delete:
+    operationId: deleteRelationship
+    tags:
+      - Relationships
+    summary: Delete a Relationship
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    responses:
+      '204':
+        description: Relationship deleted, or already absent.
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
+
+relationshipPosition:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/RelationshipId'
+  put:
+    operationId: setRelationshipPosition
+    tags:
+      - Relationships
+    summary: Set a Relationship's optional ordering position
+    description: Use an atomic Transaction when changing several positions together.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas.yaml#/PositionRequest'
+    responses:
+      '200':
+        description: Position stored.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/Relationship'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
