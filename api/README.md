@@ -111,10 +111,6 @@ Run `./gradlew clean build` before merging; it includes OpenAPI validation and g
 YAML parsing and resolved references alone do not prove generated Kotlin compiles
 or that anyOf/oneOf models serialize correctly. Do not edit generated DTOs.
 
-Optional structural regressions run with `python3 api/check_contract.py` (PyYAML
-required). They check duplicate YAML keys, references, discriminator mappings,
-operation IDs, path parameters, initial relationship IDs, ETags and dependency direction.
-
 Authentication, authorization and append-only audit storage are deferred. Local
 operation without them is not a production security boundary. Domain authors and
 business history properties are not a trusted technical audit log.
