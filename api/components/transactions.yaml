@@ -1,0 +1,210 @@
+CreateEntryMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - entry
+  properties:
+    operation:
+      type: string
+      enum:
+        - CREATE_ENTRY
+    entry:
+      allOf:
+        - $ref: './entries.yaml#/CreateEntryRequest'
+        - type: object
+          required:
+            - id
+
+SetEntryPropertyMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - entryId
+    - expectedVersion
+    - property
+    - value
+  properties:
+    operation:
+      type: string
+      enum:
+        - SET_ENTRY_PROPERTY
+    entryId:
+      type: string
+      format: uuid
+    expectedVersion:
+      type: integer
+      format: int64
+      minimum: 1
+    property:
+      $ref: './properties.yaml#/PropertyName'
+    value:
+      $ref: './properties.yaml#/PropertyValue'
+
+DeleteEntryPropertyMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - entryId
+    - expectedVersion
+    - property
+  properties:
+    operation:
+      type: string
+      enum:
+        - DELETE_ENTRY_PROPERTY
+    entryId:
+      type: string
+      format: uuid
+    expectedVersion:
+      type: integer
+      format: int64
+      minimum: 1
+    property:
+      $ref: './properties.yaml#/PropertyName'
+
+DeleteEntryMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - entryId
+    - expectedVersion
+  properties:
+    operation:
+      type: string
+      enum:
+        - DELETE_ENTRY
+    entryId:
+      type: string
+      format: uuid
+    expectedVersion:
+      type: integer
+      format: int64
+      minimum: 1
+
+CreateRelationshipMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - relationship
+  properties:
+    operation:
+      type: string
+      enum:
+        - CREATE_RELATIONSHIP
+    relationship:
+      $ref: './relationships.yaml#/CreateRelationshipRequest'
+
+DeleteRelationshipMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - relationshipId
+    - expectedVersion
+  properties:
+    operation:
+      type: string
+      enum:
+        - DELETE_RELATIONSHIP
+    relationshipId:
+      type: string
+      format: uuid
+    expectedVersion:
+      type: integer
+      format: int64
+      minimum: 1
+
+SetRelationshipPositionMutation:
+  type: object
+  additionalProperties: false
+  required:
+    - operation
+    - relationshipId
+    - expectedVersion
+    - position
+  properties:
+    operation:
+      type: string
+      enum:
+        - SET_RELATIONSHIP_POSITION
+    relationshipId:
+      type: string
+      format: uuid
+    expectedVersion:
+      type: integer
+      format: int64
+      minimum: 1
+    position:
+      type: integer
+      format: int32
+      minimum: 0
+
+Mutation:
+  oneOf:
+    - $ref: './transactions.yaml#/CreateEntryMutation'
+    - $ref: './transactions.yaml#/SetEntryPropertyMutation'
+    - $ref: './transactions.yaml#/DeleteEntryPropertyMutation'
+    - $ref: './transactions.yaml#/DeleteEntryMutation'
+    - $ref: './transactions.yaml#/CreateRelationshipMutation'
+    - $ref: './transactions.yaml#/DeleteRelationshipMutation'
+    - $ref: './transactions.yaml#/SetRelationshipPositionMutation'
+  discriminator:
+    propertyName: operation
+    mapping:
+      CREATE_ENTRY: './transactions.yaml#/CreateEntryMutation'
+      SET_ENTRY_PROPERTY: './transactions.yaml#/SetEntryPropertyMutation'
+      DELETE_ENTRY_PROPERTY: './transactions.yaml#/DeleteEntryPropertyMutation'
+      DELETE_ENTRY: './transactions.yaml#/DeleteEntryMutation'
+      CREATE_RELATIONSHIP: './transactions.yaml#/CreateRelationshipMutation'
+      DELETE_RELATIONSHIP: './transactions.yaml#/DeleteRelationshipMutation'
+      SET_RELATIONSHIP_POSITION: './transactions.yaml#/SetRelationshipPositionMutation'
+
+TransactionRequest:
+  type: object
+  additionalProperties: false
+  required:
+    - mutations
+  properties:
+    mutations:
+      type: array
+      minItems: 1
+      maxItems: 100
+      description: |
+        Mutations execute atomically in array order. Entries created here must use
+        client-generated IDs so later mutations can reference them.
+      items:
+        $ref: './transactions.yaml#/Mutation'
+
+TransactionResponse:
+  type: object
+  required:
+    - entries
+    - relationships
+    - deletedEntryIds
+    - deletedRelationshipIds
+  properties:
+    entries:
+      type: array
+      description: Current representations of created or changed Entries.
+      items:
+        $ref: './entries.yaml#/Entry'
+    relationships:
+      type: array
+      description: Current representations of created or changed Relationships.
+      items:
+        $ref: './relationships.yaml#/Relationship'
+    deletedEntryIds:
+      type: array
+      items:
+        type: string
+        format: uuid
+    deletedRelationshipIds:
+      type: array
+      items:
+        type: string
+        format: uuid

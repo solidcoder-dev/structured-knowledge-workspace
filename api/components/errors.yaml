@@ -1,0 +1,46 @@
+ProblemFieldError:
+  type: object
+  required:
+    - pointer
+    - detail
+  properties:
+    pointer:
+      type: string
+      description: JSON Pointer to the invalid request value.
+      example: /properties/product.name
+    detail:
+      type: string
+
+Problem:
+  type: object
+  description: RFC 9457 problem details with a stable machine-readable error code.
+  required:
+    - type
+    - title
+    - status
+    - code
+  properties:
+    type:
+      type: string
+      format: uri
+      default: about:blank
+    title:
+      type: string
+    status:
+      type: integer
+      format: int32
+      minimum: 400
+      maximum: 599
+    detail:
+      type: string
+    instance:
+      type: string
+      format: uri
+    code:
+      type: string
+      pattern: '^[A-Z][A-Z0-9_]*$'
+      example: RELATIONSHIP_EXISTS
+    errors:
+      type: array
+      items:
+        $ref: './errors.yaml#/ProblemFieldError'

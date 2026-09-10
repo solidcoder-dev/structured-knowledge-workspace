@@ -1,0 +1,36 @@
+transactions:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+  post:
+    operationId: executeTransaction
+    tags:
+      - Transactions
+    summary: Execute an atomic set of mutations
+    description: |
+      Executes every mutation or none. Mutations run in request order, allowing a
+      client to create Entries first and then connect them. Expected resource versions
+      prevent lost updates. A failed invariant or stale version rolls back the entire
+      transaction.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/transactions.yaml#/TransactionRequest'
+    responses:
+      '200':
+        description: Transaction committed.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/transactions.yaml#/TransactionResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'

@@ -1,0 +1,37 @@
+ResourceMetadata:
+  type: object
+  required:
+    - createdAt
+    - updatedAt
+    - version
+    - etag
+  properties:
+    etag:
+      type: string
+      readOnly: true
+      description: Opaque strong entity tag, including quotes. Use verbatim as If-Match for this resource.
+      example: '"entry-550e8400-e29b-41d4-a716-446655440000-v1"'
+    createdAt:
+      type: string
+      format: date-time
+      readOnly: true
+    updatedAt:
+      type: string
+      format: date-time
+      readOnly: true
+    version:
+      type: integer
+      format: int64
+      minimum: 1
+      readOnly: true
+      description: Monotonically increasing resource version.
+
+HealthResponse:
+  type: object
+  required:
+    - status
+  properties:
+    status:
+      type: string
+      enum:
+        - UP

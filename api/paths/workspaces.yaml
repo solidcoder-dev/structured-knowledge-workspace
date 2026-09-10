@@ -1,0 +1,150 @@
+workspaces:
+  get:
+    operationId: listWorkspaces
+    tags:
+      - Workspaces
+    summary: List Workspaces
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: Stable page ordered by creation time and identifier.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/workspaces.yaml#/WorkspacePage'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+  post:
+    operationId: createWorkspace
+    tags:
+      - Workspaces
+    summary: Create a Workspace
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/workspaces.yaml#/CreateWorkspaceRequest'
+    responses:
+      '201':
+        description: Workspace created.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+          Location:
+            $ref: '../components/headers.yaml#/Location'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/workspaces.yaml#/Workspace'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+
+workspace:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+  get:
+    operationId: getWorkspace
+    tags:
+      - Workspaces
+    summary: Get a Workspace
+    responses:
+      '200':
+        description: Workspace found.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/workspaces.yaml#/Workspace'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+  delete:
+    operationId: deleteWorkspace
+    tags:
+      - Workspaces
+    summary: Delete an empty Workspace
+    description: Refuses deletion while the Workspace contains Entries. No cascade is performed.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    responses:
+      '204':
+        description: Workspace deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
+
+workspaceProperty:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/PropertyName'
+  put:
+    operationId: setWorkspaceProperty
+    tags:
+      - Workspaces
+    summary: Create or replace one Workspace Property
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/properties.yaml#/PropertyValueRequest'
+    responses:
+      '200':
+        description: Property stored.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/workspaces.yaml#/Workspace'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
+  delete:
+    operationId: deleteWorkspaceProperty
+    tags:
+      - Workspaces
+    summary: Delete one Workspace Property
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    responses:
+      '200':
+        description: Property removed. Removing an absent Property is also successful.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/workspaces.yaml#/Workspace'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'

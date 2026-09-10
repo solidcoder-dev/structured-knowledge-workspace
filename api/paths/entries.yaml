@@ -1,0 +1,166 @@
+entries:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+  get:
+    operationId: listEntries
+    tags:
+      - Entries
+    summary: List Entries
+    description: Returns a stable page ordered by creation time and identifier.
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: Entry page.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/entries.yaml#/EntryPage'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+  post:
+    operationId: createEntry
+    tags:
+      - Entries
+    summary: Create an Entry
+    description: |
+      Creates an Entry and its optional initial Relationships atomically. Every
+      referenced Entry must already exist in the same Workspace. Initial Relationships
+      require client-generated IDs, persisted unchanged. The response and ETag describe
+      the Entry; Relationships are immediately readable using their supplied IDs.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/entries.yaml#/CreateEntryRequest'
+    responses:
+      '201':
+        description: Entry created.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+          Location:
+            $ref: '../components/headers.yaml#/Location'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/entries.yaml#/Entry'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+
+entry:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/EntryId'
+  get:
+    operationId: getEntry
+    tags:
+      - Entries
+    summary: Get an Entry
+    responses:
+      '200':
+        description: Entry found.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/entries.yaml#/Entry'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+  delete:
+    operationId: deleteEntry
+    tags:
+      - Entries
+    summary: Delete an unconnected Entry
+    description: |
+      Deletes only an Entry with no incoming or outgoing Relationships. Otherwise
+      returns 409. The API never infers ownership and never cascades deletion.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    responses:
+      '204':
+        description: Entry deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
+
+entryProperty:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/EntryId'
+    - $ref: '../components/parameters.yaml#/PropertyName'
+  put:
+    operationId: setEntryProperty
+    tags:
+      - Entries
+    summary: Create or replace one Entry Property
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/properties.yaml#/PropertyValueRequest'
+    responses:
+      '200':
+        description: Property stored.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/entries.yaml#/Entry'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'
+  delete:
+    operationId: deleteEntryProperty
+    tags:
+      - Entries
+    summary: Delete one Entry Property
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    responses:
+      '200':
+        description: Property removed. Removing an absent Property is also successful.
+        headers:
+          ETag:
+            $ref: '../components/headers.yaml#/ETag'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/entries.yaml#/Entry'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '412':
+        $ref: '../components/responses.yaml#/PreconditionFailed'
+      '428':
+        $ref: '../components/responses.yaml#/PreconditionRequired'

@@ -1,40 +1,120 @@
 openapi: 3.0.3
 info:
   title: Structured Knowledge Workspace API
-  version: 0.1.0
-  description: Initial API contract for the Structured Knowledge Workspace process.
+  version: 0.2.1
+  description: |
+    Framework-independent API for storing and retrieving structured knowledge.
+
+    The core model deliberately contains only Workspaces, Entries with generic
+    Properties, and typed Relationships between Entries. Concepts such as goals,
+    capabilities, behaviours, comments, statuses, authors and business rules belong
+    to the consuming framework.
+
+    All timestamps are UTC. Property names and relationship types are case-sensitive.
+    POST operations that accept `Idempotency-Key` scope the key to the operation target.
+    Reusing a key with the same payload returns the original
+    result; reusing it with a different payload returns `409 Conflict`.
+    See api/README.md for normative mutation, ordering and pagination rules.
 servers:
   - url: http://localhost:8080
     description: Local development server
 tags:
   - name: System
-    description: Process availability checks; this does not check external dependencies.
+    description: Process availability checks.
+  - name: Workspaces
+    description: Isolation boundaries for knowledge, access and search.
+  - name: Entries
+    description: Generic units of knowledge described by Properties.
+  - name: Relationships
+    description: Directed, typed connections between Entries in one Workspace.
+  - name: Search
+    description: Exact, full-text and semantic retrieval without exposing embeddings.
+  - name: Transactions
+    description: Atomic multi-resource mutations intended for people and agents.
 paths:
   /api/v1/health:
-    get:
-      operationId: getHealth
-      tags:
-        - System
-      summary: Check process availability
-      description: Returns the availability of the running process, without checking external dependencies.
-      responses:
-        '200':
-          description: Process is available.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthResponse'
-              example:
-                status: UP
+    $ref: './paths/system.yaml#/health'
+  /api/v1/workspaces:
+    $ref: './paths/workspaces.yaml#/workspaces'
+  /api/v1/workspaces/{workspaceId}:
+    $ref: './paths/workspaces.yaml#/workspace'
+  /api/v1/workspaces/{workspaceId}/properties/{propertyName}:
+    $ref: './paths/workspaces.yaml#/workspaceProperty'
+  /api/v1/workspaces/{workspaceId}/entries:
+    $ref: './paths/entries.yaml#/entries'
+  /api/v1/workspaces/{workspaceId}/entries/{entryId}:
+    $ref: './paths/entries.yaml#/entry'
+  /api/v1/workspaces/{workspaceId}/entries/{entryId}/properties/{propertyName}:
+    $ref: './paths/entries.yaml#/entryProperty'
+  /api/v1/workspaces/{workspaceId}/entries/{entryId}/relationships:
+    $ref: './paths/relationships.yaml#/entryRelationships'
+  /api/v1/workspaces/{workspaceId}/relationships:
+    $ref: './paths/relationships.yaml#/relationships'
+  /api/v1/workspaces/{workspaceId}/relationships/{relationshipId}:
+    $ref: './paths/relationships.yaml#/relationship'
+  /api/v1/workspaces/{workspaceId}/relationships/{relationshipId}/position:
+    $ref: './paths/relationships.yaml#/relationshipPosition'
+  /api/v1/workspaces/{workspaceId}/search:
+    $ref: './paths/search.yaml#/search'
+  /api/v1/workspaces/{workspaceId}/transactions:
+    $ref: './paths/transactions.yaml#/transactions'
 components:
+  parameters:
+    WorkspaceId:
+      $ref: './components/parameters.yaml#/WorkspaceId'
+    EntryId:
+      $ref: './components/parameters.yaml#/EntryId'
+    RelationshipId:
+      $ref: './components/parameters.yaml#/RelationshipId'
+    PropertyName:
+      $ref: './components/parameters.yaml#/PropertyName'
+    Cursor:
+      $ref: './components/parameters.yaml#/Cursor'
+    Limit:
+      $ref: './components/parameters.yaml#/Limit'
+    IfMatch:
+      $ref: './components/parameters.yaml#/IfMatch'
+    IdempotencyKey:
+      $ref: './components/parameters.yaml#/IdempotencyKey'
+  headers:
+    ETag:
+      $ref: './components/headers.yaml#/ETag'
+    Location:
+      $ref: './components/headers.yaml#/Location'
   schemas:
     HealthResponse:
-      type: object
-      required:
-        - status
-      properties:
-        status:
-          type: string
-          enum:
-            - UP
-          example: UP
+      $ref: './components/common.yaml#/HealthResponse'
+    PropertyValue:
+      $ref: './components/properties.yaml#/PropertyValue'
+    PropertyValueRequest:
+      $ref: './components/properties.yaml#/PropertyValueRequest'
+    Workspace:
+      $ref: './components/workspaces.yaml#/Workspace'
+    CreateWorkspaceRequest:
+      $ref: './components/workspaces.yaml#/CreateWorkspaceRequest'
+    WorkspacePage:
+      $ref: './components/workspaces.yaml#/WorkspacePage'
+    Entry:
+      $ref: './components/entries.yaml#/Entry'
+    CreateEntryRequest:
+      $ref: './components/entries.yaml#/CreateEntryRequest'
+    EntryPage:
+      $ref: './components/entries.yaml#/EntryPage'
+    Relationship:
+      $ref: './components/relationships.yaml#/Relationship'
+    CreateRelationshipRequest:
+      $ref: './components/relationships.yaml#/CreateRelationshipRequest'
+    RelationshipPage:
+      $ref: './components/relationships.yaml#/RelationshipPage'
+    PositionRequest:
+      $ref: './components/relationships.yaml#/PositionRequest'
+    SearchRequest:
+      $ref: './components/search.yaml#/SearchRequest'
+    SearchResponse:
+      $ref: './components/search.yaml#/SearchResponse'
+    TransactionRequest:
+      $ref: './components/transactions.yaml#/TransactionRequest'
+    TransactionResponse:
+      $ref: './components/transactions.yaml#/TransactionResponse'
+    Problem:
+      $ref: './components/errors.yaml#/Problem'

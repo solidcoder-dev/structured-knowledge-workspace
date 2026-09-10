@@ -1,0 +1,88 @@
+RelationshipType:
+  type: string
+  pattern: '^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$'
+  minLength: 1
+  maxLength: 128
+  example: product.supports
+
+Relationship:
+  type: object
+  required:
+    - id
+    - workspaceId
+    - sourceEntryId
+    - targetEntryId
+    - type
+    - metadata
+  properties:
+    id:
+      type: string
+      format: uuid
+    workspaceId:
+      type: string
+      format: uuid
+    sourceEntryId:
+      type: string
+      format: uuid
+    targetEntryId:
+      type: string
+      format: uuid
+    type:
+      $ref: './relationships.yaml#/RelationshipType'
+    position:
+      type: integer
+      format: int32
+      minimum: 0
+      description: |
+        Order within outgoing relationships sharing sourceEntryId and type.
+        Ascending positions come first, absent positions last; ties use id ascending.
+        Gaps and ties are allowed. Setting a position never renumbers other relationships.
+    metadata:
+      $ref: './common.yaml#/ResourceMetadata'
+
+CreateRelationshipRequest:
+  type: object
+  additionalProperties: false
+  required:
+    - sourceEntryId
+    - targetEntryId
+    - type
+  properties:
+    id:
+      type: string
+      format: uuid
+    sourceEntryId:
+      type: string
+      format: uuid
+    targetEntryId:
+      type: string
+      format: uuid
+    type:
+      $ref: './relationships.yaml#/RelationshipType'
+    position:
+      type: integer
+      format: int32
+      minimum: 0
+
+RelationshipPage:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: './relationships.yaml#/Relationship'
+    nextCursor:
+      type: string
+
+PositionRequest:
+  type: object
+  additionalProperties: false
+  required:
+    - position
+  properties:
+    position:
+      type: integer
+      format: int32
+      minimum: 0

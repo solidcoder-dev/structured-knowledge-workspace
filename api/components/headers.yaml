@@ -1,0 +1,9 @@
+ETag:
+  description: Strong entity tag representing the current resource version.
+  schema:
+    type: string
+Location:
+  description: URI of the created resource.
+  schema:
+    type: string
+    format: uri

@@ -1,0 +1,41 @@
+search:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+  post:
+    operationId: searchEntries
+    tags:
+      - Search
+    summary: Search Entries
+    description: |
+      Searches only inside the Workspace and supports exact property matching,
+      full-text retrieval, semantic retrieval and bounded graph filtering.
+
+      Embeddings are a derived implementation detail and are never a source of truth.
+      TEXT and HYBRID searches must provide read-after-write visibility even while the
+      semantic index is being refreshed. Deleted Entries must never appear. SEMANTIC
+      search may be eventually consistent.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/search.yaml#/SearchRequest'
+    responses:
+      '200':
+        description: Ranked page. Cursors preserve a stable continuation of this query.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/search.yaml#/SearchResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+      '503':
+        description: Requested semantic search dependency is unavailable.
+        content:
+          application/problem+json:
+            schema:
+              $ref: '../components/errors.yaml#/Problem'

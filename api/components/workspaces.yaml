@@ -1,0 +1,38 @@
+Workspace:
+  type: object
+  required:
+    - id
+    - properties
+    - metadata
+  properties:
+    id:
+      type: string
+      format: uuid
+    properties:
+      $ref: './properties.yaml#/Properties'
+    metadata:
+      $ref: './common.yaml#/ResourceMetadata'
+
+CreateWorkspaceRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Optional client-generated identifier, useful in deterministic imports.
+    properties:
+      $ref: './properties.yaml#/Properties'
+
+WorkspacePage:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: './workspaces.yaml#/Workspace'
+    nextCursor:
+      type: string
+      description: Omitted when there is no next page.
