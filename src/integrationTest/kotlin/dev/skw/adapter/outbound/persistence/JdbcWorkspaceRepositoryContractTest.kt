@@ -1,6 +1,8 @@
 package dev.skw.adapter.outbound.persistence
 
+import dev.skw.application.port.out.DeleteResult
 import dev.skw.application.port.out.SaveResult
+import dev.skw.application.workspace.WorkspacePageRequest
 import dev.skw.domain.Version
 import dev.skw.domain.property.PropertyName
 import dev.skw.domain.property.PropertyValue
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Instant
+import java.util.UUID
 import javax.sql.DataSource
 
 class JdbcWorkspaceRepositoryContractTest
@@ -47,5 +50,41 @@ class JdbcWorkspaceRepositoryContractTest
             assertEquals(SaveResult.SAVED, repository.saveIfVersion(current, current.version))
             assertEquals(2, repository.findById(created.id)!!.version.value)
             assertEquals(SaveResult.VERSION_CONFLICT, repository.saveIfVersion(changed, Version.initial()))
+        }
+
+        @Test
+        fun `delete is conditional and refuses non-empty workspaces`() {
+            val empty = repository.save(Workspace.create(now = now))
+            assertEquals(DeleteResult.VERSION_CONFLICT, repository.delete(empty.id, Version.of(2)))
+            assertEquals(DeleteResult.DELETED, repository.delete(empty.id, empty.version))
+            assertEquals(DeleteResult.NOT_FOUND, repository.delete(empty.id, empty.version))
+
+            val nonEmpty = repository.save(Workspace.create(now = now))
+            jdbc.update(
+                "INSERT INTO skw.entries (workspace_id, id) VALUES (?, ?)",
+                nonEmpty.id.value,
+                UUID.randomUUID(),
+            )
+            assertEquals(DeleteResult.NOT_EMPTY, repository.delete(nonEmpty.id, nonEmpty.version))
+        }
+
+        @Test
+        fun `list is ordered by created time and id with keyset continuation`() {
+            val createdAt = java.sql.Timestamp.from(now)
+            val ids = listOf(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()).sorted()
+            ids.forEach { id ->
+                jdbc.update(
+                    "INSERT INTO skw.workspaces (id, properties, created_at, updated_at) VALUES (?, '{}'::jsonb, ?, ?)",
+                    id,
+                    createdAt,
+                    createdAt,
+                )
+            }
+            val first = repository.list(WorkspacePageRequest(2))
+            assertEquals(ids.take(2), first.items.map { it.id.value })
+            val second = repository.list(WorkspacePageRequest(2, first.nextCursor))
+            assertEquals(listOf(ids[2]), second.items.map { it.id.value })
+            assertEquals(null, second.nextCursor)
+            assertEquals(emptyList<UUID>(), first.items.map { it.id.value }.intersect(second.items.map { it.id.value }.toSet()))
         }
     }

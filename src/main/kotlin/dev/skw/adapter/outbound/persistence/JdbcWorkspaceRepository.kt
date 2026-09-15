@@ -5,6 +5,9 @@ import dev.skw.adapter.PropertyJsonMapper
 import dev.skw.application.port.out.DeleteResult
 import dev.skw.application.port.out.SaveResult
 import dev.skw.application.port.out.WorkspaceRepository
+import dev.skw.application.workspace.WorkspaceCursor
+import dev.skw.application.workspace.WorkspacePage
+import dev.skw.application.workspace.WorkspacePageRequest
 import dev.skw.domain.Version
 import dev.skw.domain.workspace.Workspace
 import dev.skw.domain.workspace.WorkspaceId
@@ -60,22 +63,45 @@ class JdbcWorkspaceRepository(
         id: WorkspaceId,
         expectedVersion: Version,
     ): DeleteResult {
+        val deleted =
+            jdbc.update(
+                """DELETE FROM skw.workspaces w
+                   WHERE w.id = :id
+                     AND w.version = :version
+                     AND NOT EXISTS (SELECT 1 FROM skw.entries e WHERE e.workspace_id = w.id)""",
+                MapSqlParameterSource().addValue("id", id.value).addValue("version", expectedVersion.value),
+            )
+        if (deleted == 1) return DeleteResult.DELETED
+
         val current = findById(id) ?: return DeleteResult.NOT_FOUND
         if (current.version != expectedVersion) return DeleteResult.VERSION_CONFLICT
-        if (jdbc.queryForObject(
-                "SELECT count(*) FROM skw.entries WHERE workspace_id = :id",
-                MapSqlParameterSource("id", id.value),
-                Long::class.java,
-            )!! >
-            0
-        ) {
-            return DeleteResult.NOT_EMPTY
-        }
-        jdbc.update(
-            "DELETE FROM skw.workspaces WHERE id = :id AND version = :version",
-            MapSqlParameterSource().addValue("id", id.value).addValue("version", expectedVersion.value),
+        return DeleteResult.NOT_EMPTY
+    }
+
+    override fun list(request: WorkspacePageRequest): WorkspacePage {
+        val parameters = MapSqlParameterSource().addValue("limit", request.limit + 1)
+        val continuation =
+            request.after?.let {
+                parameters
+                    .addValue("afterCreatedAt", it.createdAt)
+                    .addValue("afterId", it.id.value)
+                "WHERE (created_at, id) > (:afterCreatedAt, :afterId)"
+            } ?: ""
+        val rows =
+            jdbc.query(
+                """SELECT * FROM skw.workspaces
+                   $continuation
+                   ORDER BY created_at ASC, id ASC
+                   LIMIT :limit""",
+                parameters,
+                ::mapRow,
+            )
+        val hasNext = rows.size > request.limit
+        val items = rows.take(request.limit)
+        return WorkspacePage(
+            items = items,
+            nextCursor = if (hasNext) items.lastOrNull()?.let { WorkspaceCursor(it.createdAt, it.id) } else null,
         )
-        return DeleteResult.DELETED
     }
 
     private fun mapRow(
