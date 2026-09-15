@@ -1,5 +1,7 @@
 package dev.skw.application.port.out
 
+import dev.skw.application.workspace.WorkspacePage
+import dev.skw.application.workspace.WorkspacePageRequest
 import dev.skw.domain.Version
 import dev.skw.domain.workspace.Workspace
 import dev.skw.domain.workspace.WorkspaceId
@@ -18,6 +20,8 @@ interface WorkspaceRepository {
         id: WorkspaceId,
         expectedVersion: Version,
     ): DeleteResult
+
+    fun list(request: WorkspacePageRequest): WorkspacePage
 }
 
 enum class SaveResult { SAVED, NOT_FOUND, VERSION_CONFLICT }
