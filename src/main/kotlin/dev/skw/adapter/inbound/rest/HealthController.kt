@@ -7,7 +7,5 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class HealthController : SystemApi {
-
-    override fun getHealth(): ResponseEntity<HealthResponse> =
-        ResponseEntity.ok(HealthResponse(status = HealthResponse.Status.UP))
+    override fun getHealth(): ResponseEntity<HealthResponse> = ResponseEntity.ok(HealthResponse(status = HealthResponse.Status.UP))
 }
