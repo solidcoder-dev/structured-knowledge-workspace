@@ -18,7 +18,7 @@ class LayerArchitectureTest {
             .resideInAnyPackage("..domain..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("..application..", "..adapter..")
+            .resideOutsideOfPackages("dev.skw.domain..", "java..", "kotlin..", "org.jetbrains.annotations..")
             .allowEmptyShould(true)
 
     @ArchTest
@@ -28,7 +28,22 @@ class LayerArchitectureTest {
             .resideInAnyPackage("..application..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("..adapter..")
+            .resideOutsideOfPackages(
+                "dev.skw.application..",
+                "dev.skw.domain..",
+                "java..",
+                "kotlin..",
+                "org.jetbrains.annotations..",
+            ).allowEmptyShould(true)
+
+    @ArchTest
+    val generatedDtosStayInRestAdapters: ArchRule =
+        noClassesRule()
+            .that()
+            .resideInAnyPackage("..domain..", "..application..", "..adapter.outbound..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("..adapter.inbound.rest.generated..")
             .allowEmptyShould(true)
 
     @ArchTest
@@ -45,10 +60,10 @@ class LayerArchitectureTest {
     val concreteRepositoriesLiveInOutboundAdapters: ArchRule =
         classes()
             .that()
-            .resideInAnyPackage("..domain..", "..application..")
-            .and()
             .haveSimpleNameEndingWith("Repository")
             .should()
+            .resideInAnyPackage("..adapter.outbound..")
+            .orShould()
             .beInterfaces()
             .allowEmptyShould(true)
 
@@ -67,7 +82,7 @@ class LayerArchitectureTest {
 
     @Test
     fun `defined package slices are free of cycles`() {
-        val classes = ClassFileImporter().importPackages("dev.skw")
+        val classes = ClassFileImporter().withImportOption(DoNotIncludeTests()).importPackages("dev.skw")
         slices()
             .matching("dev.skw.(*)..")
             .should()

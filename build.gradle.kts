@@ -83,6 +83,8 @@ tasks.named<GenerateTask>("openApiGenerate") {
             "supportingFiles" to "",
         ),
     )
+    typeMappings.set(mapOf("PropertyValue" to "JsonNode"))
+    importMappings.set(mapOf("JsonNode" to "com.fasterxml.jackson.databind.JsonNode"))
     doFirst {
         delete(generatedOpenApiDir.get().asFile)
     }
