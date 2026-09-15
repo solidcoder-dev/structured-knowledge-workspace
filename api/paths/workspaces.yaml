@@ -81,6 +81,8 @@ workspace:
         description: Workspace deleted.
       '404':
         $ref: '../components/responses.yaml#/NotFound'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
       '409':
         $ref: '../components/responses.yaml#/Conflict'
       '412':
@@ -144,6 +146,8 @@ workspaceProperty:
               $ref: '../components/workspaces.yaml#/Workspace'
       '404':
         $ref: '../components/responses.yaml#/NotFound'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
       '412':
         $ref: '../components/responses.yaml#/PreconditionFailed'
       '428':

@@ -52,7 +52,7 @@ Limit:
 IfMatch:
   name: If-Match
   in: header
-  required: true
+  required: false
   description: Strong ETag of the resource being changed. A stale value returns 412.
   schema:
     type: string
