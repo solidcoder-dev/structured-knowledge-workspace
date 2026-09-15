@@ -1,7 +1,6 @@
 package dev.skw.adapter.inbound.rest
 
 import dev.skw.support.PostgresIntegrationTest
-
 import org.hamcrest.Matchers.equalTo
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,10 +15,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class HealthControllerSmokeTest(
     @Autowired private val mockMvc: MockMvc,
 ) : PostgresIntegrationTest() {
-
     @Test
     fun `health endpoint exposes generated contract`() {
-        mockMvc.perform(get("/api/v1/health"))
+        mockMvc
+            .perform(get("/api/v1/health"))
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith("application/json"))
             .andExpect(jsonPath("$.status", equalTo("UP")))
