@@ -167,6 +167,31 @@ class WorkspaceErrorHandler {
     @ExceptionHandler(WorkspaceNotEmpty::class)
     fun conflict(error: WorkspaceNotEmpty) = problem(409, "WORKSPACE_NOT_EMPTY", "Workspace is not empty", error)
 
+    @ExceptionHandler(dev.skw.application.entry.EntryNotFound::class)
+    fun entryNotFound(error: dev.skw.application.entry.EntryNotFound) = problem(404, "ENTRY_NOT_FOUND", "Entry not found", error)
+
+    @ExceptionHandler(dev.skw.application.entry.EntryVersionConflict::class)
+    fun entryVersionConflict(error: dev.skw.application.entry.EntryVersionConflict) =
+        problem(412, "VERSION_CONFLICT", "Precondition failed", error)
+
+    @ExceptionHandler(dev.skw.application.entry.EntryConnected::class)
+    fun entryConnected(error: dev.skw.application.entry.EntryConnected) = problem(409, "ENTRY_CONNECTED", "Entry is connected", error)
+
+    @ExceptionHandler(dev.skw.application.entry.RelationshipAlreadyExists::class)
+    fun relationshipExists(error: dev.skw.application.entry.RelationshipAlreadyExists) =
+        problem(409, "RELATIONSHIP_ALREADY_EXISTS", "Relationship already exists", error)
+
+    @ExceptionHandler(dev.skw.application.entry.MissingRelationshipEntry::class)
+    fun relationshipEntryMissing(error: dev.skw.application.entry.MissingRelationshipEntry) =
+        problem(404, "ENTRY_NOT_FOUND", "Entry not found", error)
+
+    @ExceptionHandler(dev.skw.application.entry.RelationshipEndpointMissing::class)
+    fun relationshipEndpointMissing(error: dev.skw.application.entry.RelationshipEndpointMissing) =
+        problem(404, "ENTRY_NOT_FOUND", "Entry not found", error)
+
+    @ExceptionHandler(InvalidEntryCursor::class)
+    fun invalidEntryCursor(error: InvalidEntryCursor) = problem(400, "BAD_REQUEST", "Malformed request", error)
+
     @ExceptionHandler(IllegalArgumentException::class)
     fun unprocessable(error: IllegalArgumentException) = problem(422, "INVALID_PROPERTY_VALUE", "Invalid property value", error)
 

@@ -42,5 +42,14 @@ data class Entry private constructor(
             now: Instant,
             id: EntryId = EntryId(java.util.UUID.randomUUID()),
         ): Entry = Entry(id, workspaceId, properties.toMap(), Version.initial(), now, now)
+
+        fun restore(
+            id: EntryId,
+            workspaceId: WorkspaceId,
+            properties: Map<PropertyName, PropertyValue>,
+            version: Version,
+            createdAt: Instant,
+            updatedAt: Instant,
+        ): Entry = Entry(id, workspaceId, properties.toMap(), version, createdAt, updatedAt)
     }
 }
