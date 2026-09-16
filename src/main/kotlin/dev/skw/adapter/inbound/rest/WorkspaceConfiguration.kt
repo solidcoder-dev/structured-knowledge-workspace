@@ -14,6 +14,7 @@ import dev.skw.application.entry.ListEntriesUseCase
 import dev.skw.application.entry.SetEntryPropertyService
 import dev.skw.application.idempotency.IdempotentExecutionService
 import dev.skw.application.port.out.EntryRepository
+import dev.skw.application.port.out.KnowledgeSearch
 import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.TransactionRunner
 import dev.skw.application.port.out.WorkspaceRepository
@@ -25,6 +26,9 @@ import dev.skw.application.relationship.GetRelationshipService
 import dev.skw.application.relationship.GetRelationshipUseCase
 import dev.skw.application.relationship.ListEntryRelationshipsService
 import dev.skw.application.relationship.ListEntryRelationshipsUseCase
+import dev.skw.application.search.GraphCandidateFinder
+import dev.skw.application.search.SearchEntriesService
+import dev.skw.application.search.SearchEntriesUseCase
 import dev.skw.application.transaction.ExecuteTransactionService
 import dev.skw.application.transaction.ExecuteTransactionUseCase
 import dev.skw.application.workspace.CreateWorkspaceService
@@ -101,6 +105,23 @@ class WorkspaceConfiguration {
         json: PropertyJsonMapper,
         etag: ResourceEtag,
     ) = EntryRestMapper(json, etag)
+
+    @Bean fun searchCursorCodec() = SearchCursorCodec()
+
+    @Bean fun searchRestMapper(
+        json: PropertyJsonMapper,
+        objectMapper: ObjectMapper,
+        entryMapper: EntryRestMapper,
+        cursorCodec: SearchCursorCodec,
+        hasher: CanonicalJsonHasher,
+    ) = SearchRestMapper(json, objectMapper, entryMapper, cursorCodec, hasher)
+
+    @Bean fun searchEntriesUseCase(
+        workspaces: WorkspaceRepository,
+        entries: EntryRepository,
+        search: KnowledgeSearch,
+        graph: GraphCandidateFinder,
+    ): SearchEntriesUseCase = SearchEntriesService(workspaces, entries, search, graph)
 
     @Bean fun createRelationshipUseCase(
         workspaces: WorkspaceRepository,

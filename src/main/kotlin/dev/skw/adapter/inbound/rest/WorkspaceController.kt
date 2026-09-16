@@ -12,6 +12,11 @@ import dev.skw.application.relationship.InvalidRelationshipCursor
 import dev.skw.application.relationship.RelationshipAlreadyExists
 import dev.skw.application.relationship.RelationshipEndpointMissing
 import dev.skw.application.relationship.RelationshipNotFound
+import dev.skw.application.search.GraphLimitExceeded
+import dev.skw.application.search.InvalidPropertyFilter
+import dev.skw.application.search.InvalidSearchCursor
+import dev.skw.application.search.InvalidSearchRequest
+import dev.skw.application.search.SearchCapabilityUnavailable
 import dev.skw.application.transaction.DuplicateLocalRef
 import dev.skw.application.transaction.InvalidLocalRef
 import dev.skw.application.transaction.InvalidTransactionReference
@@ -213,6 +218,22 @@ class WorkspaceErrorHandler {
 
     @ExceptionHandler(InvalidEntryCursor::class)
     fun invalidEntryCursor(error: InvalidEntryCursor) = problem(400, "BAD_REQUEST", "Malformed request", error)
+
+    @ExceptionHandler(InvalidSearchCursor::class)
+    fun invalidSearchCursor(error: InvalidSearchCursor) = problem(400, "BAD_REQUEST", "Malformed request", error)
+
+    @ExceptionHandler(InvalidSearchRequest::class)
+    fun invalidSearchRequest(error: InvalidSearchRequest) = problem(422, "INVALID_SEARCH_REQUEST", "Invalid search request", error)
+
+    @ExceptionHandler(InvalidPropertyFilter::class)
+    fun invalidPropertyFilter(error: InvalidPropertyFilter) = problem(422, "INVALID_SEARCH_FILTER", "Invalid search filter", error)
+
+    @ExceptionHandler(GraphLimitExceeded::class)
+    fun graphLimitExceeded(error: GraphLimitExceeded) = problem(422, "GRAPH_LIMIT_EXCEEDED", "Graph candidate limit exceeded", error)
+
+    @ExceptionHandler(SearchCapabilityUnavailable::class)
+    fun searchCapabilityUnavailable(error: SearchCapabilityUnavailable) =
+        problem(503, "SEARCH_CAPABILITY_UNAVAILABLE", "Search capability unavailable", error)
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun unprocessable(error: IllegalArgumentException) = problem(422, "INVALID_PROPERTY_VALUE", "Invalid property value", error)
