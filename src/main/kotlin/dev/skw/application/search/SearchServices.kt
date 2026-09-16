@@ -1,10 +1,12 @@
 package dev.skw.application.search
 
 import dev.skw.application.port.out.EntryRepository
+import dev.skw.application.port.out.GraphCandidateFinder
 import dev.skw.application.port.out.KnowledgeSearch
 import dev.skw.application.port.out.SearchPlan
 import dev.skw.application.port.out.WorkspaceRepository
 import dev.skw.domain.entry.EntryId
+import dev.skw.domain.property.PropertyName
 import dev.skw.domain.property.PropertyValue
 import dev.skw.domain.relationship.RelationshipType
 import dev.skw.domain.workspace.WorkspaceId
@@ -14,7 +16,7 @@ enum class SearchMode { EXACT, TEXT, SEMANTIC, HYBRID }
 enum class PropertyFilterOperator { EQUALS, CONTAINS, EXISTS }
 
 data class PropertyFilter(
-    val property: String,
+    val property: PropertyName,
     val operator: PropertyFilterOperator,
     val value: PropertyValue? = null,
 )
@@ -42,7 +44,7 @@ data class SearchQuery(
 data class SearchCursor(
     val version: Int = 1,
     val fingerprint: String,
-    val rawRank: Double? = null,
+    val sortValue: Double? = null,
     val entryId: EntryId,
 )
 
@@ -75,15 +77,6 @@ class GraphLimitExceeded : RuntimeException("Graph candidate limit exceeded")
 
 class InvalidSearchCursor : RuntimeException("Invalid search cursor")
 
-interface GraphCandidateFinder {
-    fun findAdjacent(
-        workspaceId: WorkspaceId,
-        frontier: Set<EntryId>,
-        direction: GraphDirection,
-        relationshipTypes: Set<RelationshipType>,
-    ): Set<EntryId>
-}
-
 class SearchEntriesService(
     private val workspaces: WorkspaceRepository,
     private val entries: EntryRepository,
@@ -91,14 +84,14 @@ class SearchEntriesService(
     private val graphCandidates: GraphCandidateFinder,
 ) : SearchEntriesUseCase {
     override fun search(request: SearchQuery): SearchPage {
-        validate(request)
+        val normalized = validateAndNormalize(request)
         if (workspaces.findById(request.workspaceId) == null) {
             throw dev.skw.application.workspace
                 .WorkspaceNotFound(request.workspaceId)
         }
-        val effectiveMode = request.mode ?: if (request.query != null) SearchMode.HYBRID else null
+        val effectiveMode = normalized.mode
         if (effectiveMode == SearchMode.SEMANTIC || effectiveMode == SearchMode.HYBRID) throw SearchCapabilityUnavailable()
-        val candidates = request.graph?.let { findCandidates(request.workspaceId, it) }
+        val candidates = normalized.graph?.let { findCandidates(request.workspaceId, it) }
         if (candidates != null && candidates.isEmpty()) return SearchPage(emptyList(), null)
         val page =
             search.search(
@@ -106,17 +99,17 @@ class SearchEntriesService(
                     request.workspaceId,
                     effectiveMode,
                     request.query,
-                    request.filters,
+                    normalized.filters,
                     candidates,
                     request.continuation,
-                    request.limit,
+                    normalized.limit,
                     request.fingerprint,
                 ),
             )
         return page.copy(nextCursor = page.nextCursor?.copy(fingerprint = request.fingerprint))
     }
 
-    private fun validate(request: SearchQuery) {
+    private fun validateAndNormalize(request: SearchQuery): SearchQuery {
         if (request.query == null && request.mode != null) throw InvalidSearchRequest("Mode requires query")
         if (request.query != null && request.query.length !in 1..2000) throw InvalidSearchRequest("Query length is invalid")
         if (request.filters.size !in 0..50) throw InvalidSearchRequest("Filter count is invalid")
@@ -149,12 +142,11 @@ class SearchEntriesService(
             }
         }
         request.continuation?.let { if (it.fingerprint != request.fingerprint || it.version != 1) throw InvalidSearchCursor() }
-        if (request.continuation != null &&
-            request.mode == SearchMode.TEXT &&
-            request.continuation.rawRank == null
-        ) {
+        val effectiveMode = request.mode ?: if (request.query != null) SearchMode.HYBRID else null
+        if (request.continuation != null && effectiveMode == SearchMode.TEXT && request.continuation.sortValue == null) {
             throw InvalidSearchCursor()
         }
+        return request.copy(mode = effectiveMode)
     }
 
     private fun findCandidates(

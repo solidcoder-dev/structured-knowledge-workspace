@@ -15,6 +15,8 @@ import dev.skw.application.search.PropertyFilterOperator
 import dev.skw.application.search.SearchMode
 import dev.skw.application.search.SearchQuery
 import dev.skw.domain.entry.EntryId
+import dev.skw.domain.property.PropertyName
+import dev.skw.domain.property.PropertyValue
 import dev.skw.domain.relationship.RelationshipType
 import dev.skw.domain.workspace.WorkspaceId
 import java.util.UUID
@@ -30,7 +32,8 @@ class SearchRestMapper(
         workspaceId: UUID,
         request: SearchRequest,
     ): SearchQuery {
-        val mode = request.mode?.let { SearchMode.valueOf(it.value) }
+        val requestedMode = request.mode?.let { SearchMode.valueOf(it.value) }
+        val mode = requestedMode ?: request.query?.let { SearchMode.HYBRID }
         val filters = request.filters.orEmpty().map(::toFilter)
         val graph =
             request.graph?.let {
@@ -72,7 +75,13 @@ class SearchRestMapper(
 
     private fun toFilter(filter: PropertyFilter) =
         dev.skw.application.search.PropertyFilter(
-            filter.`property`,
+            try {
+                PropertyName(filter.`property`)
+            } catch (
+                _: IllegalArgumentException,
+            ) {
+                throw InvalidPropertyFilter("Invalid property name")
+            },
             PropertyFilterOperator.valueOf(filter.`operator`.value),
             filter.value?.let {
                 try {
@@ -100,13 +109,13 @@ class SearchRestMapper(
                     objectMapper.createArrayNode().apply {
                         filters
                             .sortedWith(
-                                compareBy({ it.property }, { it.operator.name }, {
-                                    it.value?.toString()
+                                compareBy({ it.property.value }, { it.operator.name }, {
+                                    it.value?.let { value -> canonicalValue(value) }
                                         ?: ""
                                 }),
                             ).forEach { filter ->
                                 addObject().apply {
-                                    put("property", filter.property)
+                                    put("property", filter.property.value)
                                     put("operator", filter.operator.name)
                                     filter.value?.let { set<JsonNode>("value", json.json(it)) }
                                 }
@@ -136,4 +145,15 @@ class SearchRestMapper(
             }
         return hasher.hash(root)
     }
+
+    private fun canonicalValue(value: PropertyValue): String =
+        when (value) {
+            is PropertyValue.StringValue -> "string:${value.value}"
+            is PropertyValue.NumberValue -> "number:${value.value.stripTrailingZeros().toPlainString()}"
+            is PropertyValue.BooleanValue -> "boolean:${value.value}"
+            is PropertyValue.StringListValue -> "strings:${value.value.joinToString("\u0000")}"
+            is PropertyValue.NumberListValue -> "numbers:${value.value.joinToString("\u0000") { it.stripTrailingZeros().toPlainString() }}"
+            is PropertyValue.BooleanListValue -> "booleans:${value.value.joinToString("\u0000")}"
+            PropertyValue.EmptyListValue -> "empty-list"
+        }
 }

@@ -10,7 +10,7 @@ import java.util.UUID
 class SearchCursorCodec {
     fun encode(cursor: SearchCursor): String =
         Base64.getUrlEncoder().withoutPadding().encodeToString(
-            "${cursor.version}|${cursor.fingerprint}|${cursor.rawRank ?: ""}|${cursor.entryId.value}".toByteArray(StandardCharsets.UTF_8),
+            "${cursor.version}|${cursor.fingerprint}|${cursor.sortValue ?: ""}|${cursor.entryId.value}".toByteArray(StandardCharsets.UTF_8),
         )
 
     fun decode(value: String): SearchCursor =
