@@ -102,13 +102,35 @@ sourceSets {
         compileClasspath += sourceSets.main.get().output + configurations.testRuntimeClasspath.get()
         runtimeClasspath += output + compileClasspath
     }
+    create("searchBenchmark") {
+        java.srcDir("src/searchBenchmark/kotlin")
+        resources.srcDir("src/searchBenchmark/resources")
+        compileClasspath += sourceSets.main.get().output + configurations.testRuntimeClasspath.get()
+        runtimeClasspath += output + compileClasspath
+    }
 }
 
 configurations["integrationTestImplementation"].extendsFrom(configurations.testImplementation.get())
 configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
+configurations["searchBenchmarkImplementation"].extendsFrom(configurations.testImplementation.get())
+configurations["searchBenchmarkRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 dependencies {
     add("integrationTestImplementation", libs.testcontainers.postgresql)
+    add("searchBenchmarkImplementation", libs.testcontainers.postgresql)
+    add("searchBenchmarkImplementation", libs.flyway.core)
+    add("searchBenchmarkImplementation", libs.flyway.postgresql)
+    add("searchBenchmarkImplementation", libs.postgresql)
 }
+
+val searchBenchmark =
+    tasks.register<JavaExec>("searchBenchmark") {
+        group = "benchmark"
+        description = "Runs reproducible PostgreSQL search benchmarks (separate from verification)."
+        dependsOn(tasks.named("searchBenchmarkClasses"))
+        classpath = sourceSets.named("searchBenchmark").get().runtimeClasspath
+        mainClass.set("dev.skw.benchmark.SearchBenchmarkRunner")
+        standardInput = System.`in`
+    }
 
 val integrationTest =
     tasks.register<Test>("integrationTest") {
