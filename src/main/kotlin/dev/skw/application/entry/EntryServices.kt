@@ -7,6 +7,7 @@ import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.SaveResult
 import dev.skw.application.port.out.TransactionRunner
 import dev.skw.application.port.out.WorkspaceRepository
+import dev.skw.application.relationship.RelationshipEndpointMissing
 import dev.skw.application.workspace.WorkspaceNotFound
 import dev.skw.domain.Version
 import dev.skw.domain.entry.Entry
@@ -50,14 +51,6 @@ class EntryVersionConflict(
 class EntryConnected(
     id: EntryId,
 ) : RuntimeException("Entry $id has relationships")
-
-class RelationshipAlreadyExists : RuntimeException("Relationship already exists")
-
-class MissingRelationshipEntry(
-    val id: EntryId,
-) : RuntimeException("Entry $id was not found in this workspace")
-
-class RelationshipEndpointMissing : RuntimeException("A relationship endpoint was not found in this workspace")
 
 fun interface CreateEntryUseCase {
     fun create(command: CreateEntryCommand): CreateEntryResult
@@ -103,7 +96,7 @@ class CreateEntryService(
         if (workspaceRepository.findById(command.workspaceId) == null) throw WorkspaceNotFound(command.workspaceId)
         val ids = command.initialRelationships.map { it.otherEntryId }.toSet()
         val missing = ids - entryRepository.findExistingIds(command.workspaceId, ids)
-        if (missing.isNotEmpty()) throw MissingRelationshipEntry(missing.first())
+        if (missing.isNotEmpty()) throw RelationshipEndpointMissing()
         return transactionRunner.inTransaction {
             val entry = entryRepository.save(Entry.create(command.workspaceId, command.properties, clock.instant()))
             val relationships =

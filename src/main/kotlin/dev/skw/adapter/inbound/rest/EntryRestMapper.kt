@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import dev.skw.adapter.PropertyJsonMapper
 import dev.skw.adapter.inbound.rest.generated.model.Entry
 import dev.skw.adapter.inbound.rest.generated.model.EntryPage
-import dev.skw.adapter.inbound.rest.generated.model.Relationship
 import dev.skw.adapter.inbound.rest.generated.model.ResourceMetadata
 import dev.skw.application.entry.CreateEntryCommand
 import dev.skw.application.entry.CreateEntryResult
@@ -64,16 +63,6 @@ class EntryRestMapper(
             ),
         )
 
-    fun toRest(relationship: dev.skw.domain.relationship.Relationship) =
-        Relationship(
-            relationship.id.value,
-            relationship.workspaceId.value,
-            relationship.sourceEntryId.value,
-            relationship.targetEntryId.value,
-            relationship.type.value,
-            OffsetDateTime.ofInstant(relationship.createdAt, ZoneOffset.UTC),
-        )
-
     fun toDomainValue(value: JsonNode) =
         try {
             json.value(value)
@@ -83,7 +72,7 @@ class EntryRestMapper(
 
     fun toResponse(result: CreateEntryResult) =
         dev.skw.adapter.inbound.rest.generated.model
-            .CreateEntryResponse(toRest(result.entry), result.relationships.map(::toRest))
+            .CreateEntryResponse(toRest(result.entry), result.relationships.map(RelationshipRestMapper::toRest))
 
     fun toPage(
         items: List<dev.skw.domain.entry.Entry>,

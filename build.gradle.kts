@@ -30,10 +30,12 @@ dependencies {
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.kotlin.reflect)
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.flyway.core)
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.postgresql)
+    compileOnly(libs.postgresql)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.archunit.junit5)

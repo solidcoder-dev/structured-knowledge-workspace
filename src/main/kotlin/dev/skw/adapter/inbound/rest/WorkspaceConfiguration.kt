@@ -16,6 +16,16 @@ import dev.skw.application.port.out.EntryRepository
 import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.TransactionRunner
 import dev.skw.application.port.out.WorkspaceRepository
+import dev.skw.application.relationship.CreateRelationshipService
+import dev.skw.application.relationship.CreateRelationshipUseCase
+import dev.skw.application.relationship.DeleteRelationshipService
+import dev.skw.application.relationship.DeleteRelationshipUseCase
+import dev.skw.application.relationship.GetRelationshipService
+import dev.skw.application.relationship.GetRelationshipUseCase
+import dev.skw.application.relationship.ListEntryRelationshipsService
+import dev.skw.application.relationship.ListEntryRelationshipsUseCase
+import dev.skw.application.transaction.ExecuteTransactionService
+import dev.skw.application.transaction.ExecuteTransactionUseCase
 import dev.skw.application.workspace.CreateWorkspaceService
 import dev.skw.application.workspace.CreateWorkspaceUseCase
 import dev.skw.application.workspace.DeleteWorkspacePropertyService
@@ -32,6 +42,8 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class WorkspaceConfiguration {
     @Bean fun workspaceJsonMapper(objectMapper: ObjectMapper) = PropertyJsonMapper(objectMapper)
+
+    @Bean fun transactionMutationJacksonModule() = TransactionMutationJacksonModule()
 
     @Bean fun createWorkspaceUseCase(repository: WorkspaceRepository): CreateWorkspaceUseCase = CreateWorkspaceService(repository)
 
@@ -80,4 +92,48 @@ class WorkspaceConfiguration {
         json: PropertyJsonMapper,
         etag: ResourceEtag,
     ) = EntryRestMapper(json, etag)
+
+    @Bean fun createRelationshipUseCase(
+        workspaces: WorkspaceRepository,
+        entries: EntryRepository,
+        relationships: RelationshipRepository,
+    ): CreateRelationshipUseCase = CreateRelationshipService(workspaces, entries, relationships)
+
+    @Bean fun getRelationshipUseCase(relationships: RelationshipRepository): GetRelationshipUseCase = GetRelationshipService(relationships)
+
+    @Bean fun deleteRelationshipUseCase(relationships: RelationshipRepository): DeleteRelationshipUseCase =
+        DeleteRelationshipService(relationships)
+
+    @Bean fun listEntryRelationshipsUseCase(
+        workspaces: WorkspaceRepository,
+        entries: EntryRepository,
+        relationships: RelationshipRepository,
+    ): ListEntryRelationshipsUseCase = ListEntryRelationshipsService(workspaces, entries, relationships)
+
+    @Bean fun relationshipCursorCodec() = RelationshipCursorCodec()
+
+    @Bean
+    fun transactionRestMapper(entryRestMapper: EntryRestMapper) = TransactionRestMapper(entryRestMapper)
+
+    @Bean
+    fun executeTransactionUseCase(
+        workspaces: WorkspaceRepository,
+        entries: EntryRepository,
+        relationships: RelationshipRepository,
+        transactions: TransactionRunner,
+        createRelationship: CreateRelationshipUseCase,
+        getRelationship: GetRelationshipUseCase,
+        deleteRelationship: DeleteRelationshipUseCase,
+    ): ExecuteTransactionUseCase =
+        ExecuteTransactionService(
+            workspaces,
+            CreateEntryService(workspaces, entries, relationships, transactions),
+            SetEntryPropertyService(entries),
+            DeleteEntryPropertyService(entries),
+            DeleteEntryService(entries),
+            createRelationship,
+            getRelationship,
+            deleteRelationship,
+            transactions,
+        )
 }

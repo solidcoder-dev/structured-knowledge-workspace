@@ -7,6 +7,16 @@ import dev.skw.adapter.inbound.rest.generated.model.CreateWorkspaceRequest
 import dev.skw.adapter.inbound.rest.generated.model.ResourceMetadata
 import dev.skw.adapter.inbound.rest.generated.model.Workspace
 import dev.skw.adapter.inbound.rest.generated.model.WorkspacePage
+import dev.skw.application.relationship.InvalidRelationshipCursor
+import dev.skw.application.relationship.RelationshipAlreadyExists
+import dev.skw.application.relationship.RelationshipEndpointMissing
+import dev.skw.application.relationship.RelationshipNotFound
+import dev.skw.application.transaction.DuplicateLocalRef
+import dev.skw.application.transaction.InvalidLocalRef
+import dev.skw.application.transaction.InvalidTransactionReference
+import dev.skw.application.transaction.InvalidTransactionSize
+import dev.skw.application.transaction.TransactionMutationFailed
+import dev.skw.application.transaction.UnknownLocalRef
 import dev.skw.application.workspace.CreateWorkspaceCommand
 import dev.skw.application.workspace.CreateWorkspaceUseCase
 import dev.skw.application.workspace.DeleteWorkspacePropertyService
@@ -177,23 +187,60 @@ class WorkspaceErrorHandler {
     @ExceptionHandler(dev.skw.application.entry.EntryConnected::class)
     fun entryConnected(error: dev.skw.application.entry.EntryConnected) = problem(409, "ENTRY_CONNECTED", "Entry is connected", error)
 
-    @ExceptionHandler(dev.skw.application.entry.RelationshipAlreadyExists::class)
-    fun relationshipExists(error: dev.skw.application.entry.RelationshipAlreadyExists) =
+    @ExceptionHandler(RelationshipAlreadyExists::class)
+    fun relationshipExists(error: RelationshipAlreadyExists) =
         problem(409, "RELATIONSHIP_ALREADY_EXISTS", "Relationship already exists", error)
 
-    @ExceptionHandler(dev.skw.application.entry.MissingRelationshipEntry::class)
-    fun relationshipEntryMissing(error: dev.skw.application.entry.MissingRelationshipEntry) =
-        problem(404, "ENTRY_NOT_FOUND", "Entry not found", error)
+    @ExceptionHandler(RelationshipEndpointMissing::class)
+    fun relationshipEndpointMissing(error: RelationshipEndpointMissing) = problem(404, "ENTRY_NOT_FOUND", "Entry not found", error)
 
-    @ExceptionHandler(dev.skw.application.entry.RelationshipEndpointMissing::class)
-    fun relationshipEndpointMissing(error: dev.skw.application.entry.RelationshipEndpointMissing) =
-        problem(404, "ENTRY_NOT_FOUND", "Entry not found", error)
+    @ExceptionHandler(RelationshipNotFound::class)
+    fun relationshipNotFound(error: RelationshipNotFound) = problem(404, "RELATIONSHIP_NOT_FOUND", "Relationship not found", error)
+
+    @ExceptionHandler(InvalidRelationshipCursor::class)
+    fun invalidRelationshipCursor(error: InvalidRelationshipCursor) = problem(400, "BAD_REQUEST", "Malformed request", error)
 
     @ExceptionHandler(InvalidEntryCursor::class)
     fun invalidEntryCursor(error: InvalidEntryCursor) = problem(400, "BAD_REQUEST", "Malformed request", error)
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun unprocessable(error: IllegalArgumentException) = problem(422, "INVALID_PROPERTY_VALUE", "Invalid property value", error)
+
+    @ExceptionHandler(TransactionMutationFailed::class)
+    fun transactionMutationFailed(error: TransactionMutationFailed): ResponseEntity<dev.skw.adapter.inbound.rest.generated.model.Problem> {
+        val cause = error.failure
+        val (status, code, title) =
+            when (cause) {
+                is dev.skw.application.entry.EntryVersionConflict -> Triple(409, "VERSION_CONFLICT", "Version conflict")
+                is dev.skw.application.entry.EntryConnected -> Triple(409, "ENTRY_CONNECTED", "Entry is connected")
+                is RelationshipAlreadyExists -> Triple(409, "RELATIONSHIP_ALREADY_EXISTS", "Relationship already exists")
+                is dev.skw.application.entry.EntryNotFound -> Triple(404, "ENTRY_NOT_FOUND", "Entry not found")
+                is RelationshipNotFound -> Triple(404, "RELATIONSHIP_NOT_FOUND", "Relationship not found")
+                is RelationshipEndpointMissing -> Triple(404, "ENTRY_NOT_FOUND", "Entry not found")
+                is UnknownLocalRef, is DuplicateLocalRef, is InvalidLocalRef, is InvalidTransactionReference,
+                is InvalidTransactionSize,
+                -> Triple(422, "INVALID_TRANSACTION", "Invalid transaction")
+                else -> Triple(500, "TRANSACTION_FAILED", "Transaction failed")
+            }
+        return ResponseEntity.status(status).body(
+            dev.skw.adapter.inbound.rest.generated.model.Problem(
+                title = title,
+                status = status,
+                code = code,
+                detail = cause.message,
+                errors =
+                    listOf(
+                        dev.skw.adapter.inbound.rest.generated.model.ProblemFieldError(
+                            "/mutations/${error.index}",
+                            cause.message ?: title,
+                        ),
+                    ),
+            ),
+        )
+    }
+
+    @ExceptionHandler(InvalidLocalRef::class, InvalidTransactionReference::class, InvalidTransactionSize::class)
+    fun invalidTransaction(error: RuntimeException) = problem(422, "INVALID_TRANSACTION", "Invalid transaction", error)
 
     private fun problem(
         status: Int,

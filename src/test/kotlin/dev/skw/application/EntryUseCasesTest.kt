@@ -4,7 +4,6 @@ import dev.skw.application.entry.CreateEntryCommand
 import dev.skw.application.entry.CreateEntryService
 import dev.skw.application.entry.Direction
 import dev.skw.application.entry.InitialRelationshipCommand
-import dev.skw.application.entry.RelationshipAlreadyExists
 import dev.skw.application.port.out.EntryDeleteResult
 import dev.skw.application.port.out.EntryPageRequest
 import dev.skw.application.port.out.EntryRepository
@@ -12,6 +11,7 @@ import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.SaveResult
 import dev.skw.application.port.out.TransactionRunner
 import dev.skw.application.port.out.WorkspaceRepository
+import dev.skw.application.relationship.RelationshipAlreadyExists
 import dev.skw.application.workspace.WorkspacePage
 import dev.skw.application.workspace.WorkspacePageRequest
 import dev.skw.domain.Version
@@ -161,5 +161,19 @@ class EntryUseCasesTest {
                 Instant.parse("2026-01-01T00:00:00Z"),
             )
         }
+
+        override fun findById(
+            workspaceId: WorkspaceId,
+            relationshipId: dev.skw.domain.relationship.RelationshipId,
+        ) = null
+
+        override fun delete(
+            workspaceId: WorkspaceId,
+            relationshipId: dev.skw.domain.relationship.RelationshipId,
+        ) = false
+
+        override fun listForEntry(request: dev.skw.application.relationship.RelationshipPageRequest) =
+            dev.skw.application.relationship
+                .RelationshipPage(emptyList(), null)
     }
 }
