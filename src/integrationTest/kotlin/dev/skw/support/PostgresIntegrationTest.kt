@@ -7,7 +7,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 
 @SpringBootTest
 abstract class PostgresIntegrationTest {
-    private class TestPostgres : PostgreSQLContainer<TestPostgres>("postgres:17.11")
+    private class TestPostgres : PostgreSQLContainer<TestPostgres>("pgvector/pgvector:0.8.6-pg17-bookworm")
 
     companion object {
         // One database per test JVM. Testcontainers/Ryuk removes it at JVM shutdown.

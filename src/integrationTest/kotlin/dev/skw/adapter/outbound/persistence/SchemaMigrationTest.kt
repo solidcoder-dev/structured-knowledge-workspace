@@ -62,7 +62,7 @@ class SchemaMigrationTest
             assertEquals(0, flyway.info().pending().size)
             assertEquals(0, flyway.migrate().migrationsExecuted)
             assertEquals(
-                listOf("1", "2", "3", "4"),
+                listOf("1", "2", "3", "4", "5"),
                 flyway.info().applied().mapNotNull { it.version?.version },
             )
         }
@@ -86,6 +86,33 @@ class SchemaMigrationTest
                     """SELECT count(*) FROM pg_indexes
                    WHERE schemaname = 'skw' AND tablename = 'entries' AND indexname = 'entries_search_vector_idx'
                    AND indexdef ILIKE '%USING gin%'""",
+                    Int::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `v5 installs pgvector and the derived projection constraints`() {
+            assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM pg_extension WHERE extname = 'vector'", Int::class.java))
+            assertEquals(
+                1,
+                jdbc.queryForObject(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'skw' AND table_name = 'entry_semantic_embeddings'",
+                    Int::class.java,
+                ),
+            )
+            assertEquals(
+                1,
+                jdbc.queryForObject(
+                    """SELECT count(*) FROM pg_constraint WHERE conname = 'entry_semantic_embeddings_entry_fk'
+                       AND confdeltype = 'c'""",
+                    Int::class.java,
+                ),
+            )
+            assertEquals(
+                1,
+                jdbc.queryForObject(
+                    """SELECT count(*) FROM pg_constraint WHERE conname = 'entry_semantic_embeddings_dimensions_ck'""",
                     Int::class.java,
                 ),
             )

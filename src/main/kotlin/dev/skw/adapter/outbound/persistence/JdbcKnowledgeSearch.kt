@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dev.skw.adapter.PropertyJsonMapper
 import dev.skw.application.port.out.KnowledgeSearch
 import dev.skw.application.port.out.SearchPlan
-import dev.skw.application.search.PropertyFilterOperator
 import dev.skw.application.search.SearchCursor
 import dev.skw.application.search.SearchHit
 import dev.skw.application.search.SearchMode
@@ -25,6 +24,7 @@ class JdbcKnowledgeSearch(
 ) : KnowledgeSearch {
     private val json = PropertyJsonMapper(objectMapper)
     private val mapper = objectMapper
+    private val propertyFilters = EntryPropertyFilterSql(objectMapper, json)
 
     override fun search(plan: SearchPlan): SearchPage {
         val params = MapSqlParameterSource().addValue("workspaceId", plan.workspaceId.value).addValue("limit", plan.limit + 1)
@@ -34,22 +34,7 @@ class JdbcKnowledgeSearch(
             params.addValue("candidateIds", it.map { id -> id.value })
             conditions += "e.id IN (:candidateIds)"
         }
-        plan.filters.forEachIndexed { index, filter ->
-            val property = "property$index"
-            params.addValue(property, filter.property.value)
-            val expression = "e.properties -> :$property"
-            when (filter.operator) {
-                PropertyFilterOperator.EXISTS -> conditions += "jsonb_exists(e.properties, :$property)"
-                PropertyFilterOperator.EQUALS -> {
-                    params.addValue("value$index", mapper.writeValueAsString(json.json(filter.value!!)))
-                    conditions += "$expression = CAST(:value$index AS jsonb)"
-                }
-                PropertyFilterOperator.CONTAINS -> {
-                    params.addValue("value$index", mapper.writeValueAsString(json.json(filter.value!!)))
-                    conditions += "jsonb_typeof($expression) = 'array' AND $expression @> jsonb_build_array(CAST(:value$index AS jsonb))"
-                }
-            }
-        }
+        propertyFilters.append(plan.filters, "e", params, conditions)
         val rankExpression = "ts_rank_cd(e.search_vector, websearch_to_tsquery('simple', :query))"
         if (plan.query != null) {
             params.addValue("query", plan.query)
