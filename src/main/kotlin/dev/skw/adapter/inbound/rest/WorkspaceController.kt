@@ -7,6 +7,7 @@ import dev.skw.adapter.inbound.rest.generated.model.CreateWorkspaceRequest
 import dev.skw.adapter.inbound.rest.generated.model.ResourceMetadata
 import dev.skw.adapter.inbound.rest.generated.model.Workspace
 import dev.skw.adapter.inbound.rest.generated.model.WorkspacePage
+import dev.skw.application.idempotency.IdempotencyScope
 import dev.skw.application.relationship.InvalidRelationshipCursor
 import dev.skw.application.relationship.RelationshipAlreadyExists
 import dev.skw.application.relationship.RelationshipEndpointMissing
@@ -50,11 +51,17 @@ class WorkspaceController(
     private val mapper: WorkspaceRestMapper,
     private val etag: ResourceEtag,
     private val cursorCodec: WorkspaceCursorCodec,
+    private val idempotent: IdempotentRestExecutor? = null,
 ) : WorkspacesApi {
     override fun createWorkspace(
         idempotencyKey: String,
         createWorkspaceRequest: CreateWorkspaceRequest,
-    ): ResponseEntity<Workspace> {
+    ): ResponseEntity<Workspace> =
+        idempotent?.execute(IdempotencyScope("POST", "/api/v1/workspaces"), idempotencyKey, createWorkspaceRequest, Workspace::class.java) {
+            createWorkspaceResponse(createWorkspaceRequest)
+        } ?: createWorkspaceResponse(createWorkspaceRequest)
+
+    private fun createWorkspaceResponse(createWorkspaceRequest: CreateWorkspaceRequest): ResponseEntity<Workspace> {
         val created = createWorkspace.create(CreateWorkspaceCommand(mapper.toDomain(createWorkspaceRequest.properties.orEmpty())))
         return ResponseEntity
             .created(URI.create("/api/v1/workspaces/${created.id}"))
@@ -151,6 +158,10 @@ class WorkspaceRestMapper(
 
 @RestControllerAdvice
 class WorkspaceErrorHandler {
+    @ExceptionHandler(dev.skw.application.idempotency.IdempotencyKeyReused::class)
+    fun idempotencyKeyReused(error: dev.skw.application.idempotency.IdempotencyKeyReused) =
+        problem(409, "IDEMPOTENCY_KEY_REUSED", "Idempotency key reused", error)
+
     @ExceptionHandler(WorkspaceNotFound::class)
     fun notFound(error: WorkspaceNotFound): ResponseEntity<dev.skw.adapter.inbound.rest.generated.model.Problem> =
         ResponseEntity

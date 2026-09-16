@@ -12,6 +12,7 @@ import dev.skw.application.entry.GetEntryUseCase
 import dev.skw.application.entry.ListEntriesService
 import dev.skw.application.entry.ListEntriesUseCase
 import dev.skw.application.entry.SetEntryPropertyService
+import dev.skw.application.idempotency.IdempotentExecutionService
 import dev.skw.application.port.out.EntryRepository
 import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.TransactionRunner
@@ -41,7 +42,15 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class WorkspaceConfiguration {
+    @Bean
+    fun idempotentExecutionService(
+        store: dev.skw.application.idempotency.IdempotencyStore,
+        transactions: TransactionRunner,
+    ) = IdempotentExecutionService(store, transactions)
+
     @Bean fun workspaceJsonMapper(objectMapper: ObjectMapper) = PropertyJsonMapper(objectMapper)
+
+    @Bean fun canonicalJsonHasher(objectMapper: ObjectMapper) = CanonicalJsonHasher(objectMapper)
 
     @Bean fun transactionMutationJacksonModule() = TransactionMutationJacksonModule()
 

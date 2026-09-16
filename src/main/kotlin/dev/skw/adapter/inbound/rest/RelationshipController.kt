@@ -4,6 +4,7 @@ import dev.skw.adapter.inbound.rest.generated.api.RelationshipsApi
 import dev.skw.adapter.inbound.rest.generated.model.CreateRelationshipRequest
 import dev.skw.adapter.inbound.rest.generated.model.Relationship
 import dev.skw.adapter.inbound.rest.generated.model.RelationshipPage
+import dev.skw.application.idempotency.IdempotencyScope
 import dev.skw.application.relationship.CreateRelationshipUseCase
 import dev.skw.application.relationship.DeleteRelationshipUseCase
 import dev.skw.application.relationship.GetRelationshipUseCase
@@ -26,18 +27,24 @@ class RelationshipController(
     private val deleteRelationship: DeleteRelationshipUseCase,
     private val listEntryRelationships: ListEntryRelationshipsUseCase,
     private val cursorCodec: RelationshipCursorCodec,
+    private val idempotent: IdempotentRestExecutor,
 ) : RelationshipsApi {
     override fun createRelationship(
         workspaceId: UUID,
         idempotencyKey: String,
         createRelationshipRequest: CreateRelationshipRequest,
-    ): ResponseEntity<Relationship> {
-        val created = createRelationship.create(RelationshipRestMapper.toCreateCommand(workspaceId, createRelationshipRequest))
-        return ResponseEntity
-            .created(
-                URI.create("/api/v1/workspaces/$workspaceId/relationships/${created.id}"),
-            ).body(RelationshipRestMapper.toRest(created))
-    }
+    ): ResponseEntity<Relationship> =
+        idempotent.execute(
+            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/relationships", workspaceId.toString()),
+            idempotencyKey,
+            createRelationshipRequest,
+            Relationship::class.java,
+        ) {
+            val created = createRelationship.create(RelationshipRestMapper.toCreateCommand(workspaceId, createRelationshipRequest))
+            ResponseEntity
+                .created(URI.create("/api/v1/workspaces/$workspaceId/relationships/${created.id}"))
+                .body(RelationshipRestMapper.toRest(created))
+        }
 
     override fun getRelationship(
         workspaceId: UUID,

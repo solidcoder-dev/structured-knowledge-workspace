@@ -13,6 +13,7 @@ import dev.skw.application.entry.GetEntryUseCase
 import dev.skw.application.entry.ListEntriesQuery
 import dev.skw.application.entry.ListEntriesUseCase
 import dev.skw.application.entry.SetEntryPropertyService
+import dev.skw.application.idempotency.IdempotencyScope
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.property.PropertyName
 import dev.skw.domain.workspace.WorkspaceId
@@ -32,19 +33,25 @@ class EntryController(
     private val mapper: EntryRestMapper,
     private val etag: ResourceEtag,
     private val cursorCodec: EntryCursorCodec,
+    private val idempotent: IdempotentRestExecutor,
 ) : EntriesApi {
     override fun createEntry(
         workspaceId: UUID,
         idempotencyKey: String,
         createEntryRequest: CreateEntryRequest,
-    ): ResponseEntity<CreateEntryResponse> {
-        val result = createEntry.create(mapper.toCreateCommand(workspaceId, createEntryRequest))
-        return ResponseEntity
-            .created(
-                URI.create("/api/v1/workspaces/$workspaceId/entries/${result.entry.id}"),
-            ).eTag(etag.format(result.entry.id.value, result.entry.version))
-            .body(mapper.toResponse(result))
-    }
+    ): ResponseEntity<CreateEntryResponse> =
+        idempotent.execute(
+            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/entries", workspaceId.toString()),
+            idempotencyKey,
+            createEntryRequest,
+            CreateEntryResponse::class.java,
+        ) {
+            val result = createEntry.create(mapper.toCreateCommand(workspaceId, createEntryRequest))
+            ResponseEntity
+                .created(URI.create("/api/v1/workspaces/$workspaceId/entries/${result.entry.id}"))
+                .eTag(etag.format(result.entry.id.value, result.entry.version))
+                .body(mapper.toResponse(result))
+        }
 
     override fun getEntry(
         workspaceId: UUID,
