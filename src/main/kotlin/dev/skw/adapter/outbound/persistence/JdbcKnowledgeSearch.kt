@@ -70,13 +70,13 @@ class JdbcKnowledgeSearch(
             )
         val items =
             rows.take(plan.limit).map { row ->
-                SearchHit(row.entry, if (text) row.rawRank / (1 + row.rawRank) else 1.0, if (text) row.rawRank else null)
+                SearchHit(row.entry, if (text) row.sortValue / (1 + row.sortValue) else 1.0, if (text) row.sortValue else null)
             }
         val next =
             if (rows.size >
                 plan.limit
             ) {
-                items.lastOrNull()?.let { SearchCursor(fingerprint = plan.fingerprint, sortValue = it.rawRank, entryId = it.entry.id) }
+                items.lastOrNull()?.let { SearchCursor(fingerprint = plan.fingerprint, sortValue = it.sortValue, entryId = it.entry.id) }
             } else {
                 null
             }
@@ -85,7 +85,7 @@ class JdbcKnowledgeSearch(
 
     private data class Row(
         val entry: Entry,
-        val rawRank: Double,
+        val sortValue: Double,
     )
 
     private fun mapRow(

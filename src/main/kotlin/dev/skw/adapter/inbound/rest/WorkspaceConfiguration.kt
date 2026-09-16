@@ -15,6 +15,7 @@ import dev.skw.application.entry.SetEntryPropertyService
 import dev.skw.application.idempotency.IdempotentExecutionService
 import dev.skw.application.port.out.EntryRepository
 import dev.skw.application.port.out.GraphCandidateFinder
+import dev.skw.application.port.out.HybridKnowledgeSearch
 import dev.skw.application.port.out.KnowledgeSearch
 import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.TransactionRunner
@@ -134,7 +135,8 @@ class WorkspaceConfiguration {
         graph: GraphCandidateFinder,
         semanticSearch: SemanticKnowledgeSearch?,
         embeddingProvider: EmbeddingProvider?,
-    ): SearchEntriesUseCase = SearchEntriesService(workspaces, entries, search, graph, semanticSearch, embeddingProvider)
+        hybridSearch: HybridKnowledgeSearch?,
+    ): SearchEntriesUseCase = SearchEntriesService(workspaces, entries, search, graph, semanticSearch, embeddingProvider, hybridSearch)
 
     @Bean fun createRelationshipUseCase(
         workspaces: WorkspaceRepository,

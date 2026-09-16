@@ -150,7 +150,7 @@ class JdbcKnowledgeSearchContractTest
                     .intersect(second.items.map { it.entry.id })
                     .isEmpty(),
             )
-            assertTrue(first.items.zipWithNext().all { it.first.rawRank!! >= it.second.rawRank!! })
+            assertTrue(first.items.zipWithNext().all { it.first.sortValue!! >= it.second.sortValue!! })
             assertTrue(first.items.all { it.score in 0.0..1.0 })
             assertFalse(search.search(plan(a, SearchMode.TEXT, "alpha")).items.any { it.entry.workspaceId == b })
         }

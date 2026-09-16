@@ -2,12 +2,15 @@ package dev.skw.application.search
 
 import dev.skw.application.port.out.EntryRepository
 import dev.skw.application.port.out.GraphCandidateFinder
+import dev.skw.application.port.out.HybridKnowledgeSearch
+import dev.skw.application.port.out.HybridRankingPolicy
+import dev.skw.application.port.out.HybridSearchPlan
 import dev.skw.application.port.out.KnowledgeSearch
 import dev.skw.application.port.out.SearchPlan
 import dev.skw.application.port.out.WorkspaceRepository
+import dev.skw.application.semantic.DerivedSearchFingerprint
 import dev.skw.application.semantic.EmbeddingProvider
 import dev.skw.application.semantic.SemanticKnowledgeSearch
-import dev.skw.application.semantic.SemanticSearchFingerprint
 import dev.skw.application.semantic.SemanticSearchPlan
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.property.PropertyName
@@ -55,7 +58,7 @@ data class SearchCursor(
 data class SearchHit(
     val entry: dev.skw.domain.entry.Entry,
     val score: Double,
-    val rawRank: Double? = null,
+    val sortValue: Double? = null,
 )
 
 data class SearchPage(
@@ -88,6 +91,8 @@ class SearchEntriesService(
     private val graphCandidates: GraphCandidateFinder,
     private val semanticSearch: SemanticKnowledgeSearch? = null,
     private val embeddingProvider: EmbeddingProvider? = null,
+    private val hybridSearch: HybridKnowledgeSearch? = null,
+    private val hybridPolicy: HybridRankingPolicy = HybridRankingPolicy(),
 ) : SearchEntriesUseCase {
     override fun search(request: SearchQuery): SearchPage {
         val normalized = validateAndNormalize(request)
@@ -96,14 +101,19 @@ class SearchEntriesService(
                 .WorkspaceNotFound(request.workspaceId)
         }
         val effectiveMode = normalized.mode
-        val profile = if (effectiveMode == SearchMode.SEMANTIC) embeddingProvider?.profile() else null
-        val effectiveFingerprint = profile?.let { SemanticSearchFingerprint.withProfile(request.fingerprint, it) } ?: request.fingerprint
+        val profile = if (effectiveMode == SearchMode.SEMANTIC || effectiveMode == SearchMode.HYBRID) embeddingProvider?.profile() else null
+        val effectiveFingerprint =
+            when (effectiveMode) {
+                SearchMode.SEMANTIC -> profile?.let { DerivedSearchFingerprint.withSemanticProfile(request.fingerprint, it) }
+                SearchMode.HYBRID -> profile?.let { DerivedSearchFingerprint.withHybrid(request.fingerprint, it, hybridPolicy) }
+                else -> null
+            } ?: request.fingerprint
         val candidates = normalized.graph?.let { findCandidates(request.workspaceId, it) }
         if (candidates != null && candidates.isEmpty()) return SearchPage(emptyList(), null)
-        if (effectiveMode == SearchMode.HYBRID) throw SearchCapabilityUnavailable()
-        if (effectiveMode == SearchMode.SEMANTIC) {
+        if (effectiveMode == SearchMode.SEMANTIC || effectiveMode == SearchMode.HYBRID) {
             val provider = embeddingProvider ?: throw SearchCapabilityUnavailable()
-            val semantic = semanticSearch ?: throw SearchCapabilityUnavailable()
+            if (effectiveMode == SearchMode.SEMANTIC && semanticSearch == null) throw SearchCapabilityUnavailable()
+            if (effectiveMode == SearchMode.HYBRID && hybridSearch == null) throw SearchCapabilityUnavailable()
             val query = request.query ?: throw InvalidSearchRequest("Semantic search requires query")
             val vector =
                 try {
@@ -115,18 +125,35 @@ class SearchEntriesService(
                 }
             request.continuation?.let { if (it.fingerprint != effectiveFingerprint) throw InvalidSearchCursor() }
             val page =
-                semantic.search(
-                    SemanticSearchPlan(
-                        request.workspaceId,
-                        profile!!,
-                        vector,
-                        normalized.filters,
-                        candidates,
-                        request.continuation,
-                        normalized.limit,
-                        effectiveFingerprint,
-                    ),
-                )
+                if (effectiveMode == SearchMode.SEMANTIC) {
+                    semanticSearch!!.search(
+                        SemanticSearchPlan(
+                            request.workspaceId,
+                            profile!!,
+                            vector,
+                            normalized.filters,
+                            candidates,
+                            request.continuation,
+                            normalized.limit,
+                            effectiveFingerprint,
+                        ),
+                    )
+                } else {
+                    hybridSearch!!.search(
+                        HybridSearchPlan(
+                            request.workspaceId,
+                            query,
+                            vector,
+                            profile!!,
+                            normalized.filters,
+                            candidates,
+                            request.continuation,
+                            normalized.limit,
+                            effectiveFingerprint,
+                            hybridPolicy,
+                        ),
+                    )
+                }
             return page.copy(nextCursor = page.nextCursor?.copy(fingerprint = effectiveFingerprint))
         }
         request.continuation?.let { if (it.fingerprint != effectiveFingerprint) throw InvalidSearchCursor() }
@@ -180,7 +207,10 @@ class SearchEntriesService(
         }
         request.continuation?.let { if (it.version != 1) throw InvalidSearchCursor() }
         val effectiveMode = request.mode ?: if (request.query != null) SearchMode.HYBRID else null
-        if (request.continuation != null && effectiveMode == SearchMode.TEXT && request.continuation.sortValue == null) {
+        if (request.continuation != null &&
+            effectiveMode in setOf(SearchMode.TEXT, SearchMode.SEMANTIC, SearchMode.HYBRID) &&
+            request.continuation.sortValue == null
+        ) {
             throw InvalidSearchCursor()
         }
         return request.copy(mode = effectiveMode)

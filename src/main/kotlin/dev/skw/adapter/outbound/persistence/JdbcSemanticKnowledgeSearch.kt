@@ -68,7 +68,7 @@ class JdbcSemanticKnowledgeSearch(
             if (rows.size >
                 plan.limit
             ) {
-                items.lastOrNull()?.let { SearchCursor(fingerprint = plan.fingerprint, sortValue = it.rawRank, entryId = it.entry.id) }
+                items.lastOrNull()?.let { SearchCursor(fingerprint = plan.fingerprint, sortValue = it.sortValue, entryId = it.entry.id) }
             } else {
                 null
             }

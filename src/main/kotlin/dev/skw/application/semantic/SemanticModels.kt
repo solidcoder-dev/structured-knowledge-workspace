@@ -1,5 +1,6 @@
 package dev.skw.application.semantic
 
+import dev.skw.application.port.out.HybridRankingPolicy
 import dev.skw.domain.Version
 import dev.skw.domain.entry.Entry
 import dev.skw.domain.entry.EntryId
@@ -118,13 +119,26 @@ class SemanticDocumentHasher {
             .joinToString("") { "%02x".format(it) }
 }
 
-object SemanticSearchFingerprint {
-    fun withProfile(
+object DerivedSearchFingerprint {
+    fun withSemanticProfile(
         baseFingerprint: String,
         profile: EmbeddingProfile,
     ): String =
         java.security.MessageDigest
             .getInstance("SHA-256")
-            .digest("$baseFingerprint\u0000${profile.profileId}".toByteArray(Charsets.UTF_8))
+            .digest("$baseFingerprint\u0000semantic\u0000${profile.profileId}\u0000${profile.dimensions}".toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
+
+    fun withHybrid(
+        baseFingerprint: String,
+        profile: EmbeddingProfile,
+        policy: HybridRankingPolicy,
+    ): String =
+        java.security.MessageDigest
+            .getInstance("SHA-256")
+            .digest(
+                "$baseFingerprint\u0000hybrid\u0000${profile.profileId}\u0000${profile.dimensions}\u0000${policy.identifier}".toByteArray(
+                    Charsets.UTF_8,
+                ),
+            ).joinToString("") { "%02x".format(it) }
 }
