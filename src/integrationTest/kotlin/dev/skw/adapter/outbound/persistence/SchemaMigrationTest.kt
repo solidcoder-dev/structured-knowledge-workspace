@@ -62,9 +62,53 @@ class SchemaMigrationTest
             assertEquals(0, flyway.info().pending().size)
             assertEquals(0, flyway.migrate().migrationsExecuted)
             assertEquals(
-                listOf("1", "2", "3"),
+                listOf("1", "2", "3", "4"),
                 flyway.info().applied().mapNotNull { it.version?.version },
             )
+        }
+
+        @Test
+        fun `v4 derives a stored tsvector and maintains its gin index`() {
+            assertEquals(
+                1,
+                jdbc.queryForObject(
+                    """SELECT count(*) FROM pg_attribute a
+                   JOIN pg_class c ON c.oid = a.attrelid
+                   JOIN pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'skw' AND c.relname = 'entries' AND a.attname = 'search_vector'
+                   AND a.attgenerated = 's' AND a.atttypid = 'tsvector'::regtype""",
+                    Int::class.java,
+                ),
+            )
+            assertEquals(
+                1,
+                jdbc.queryForObject(
+                    """SELECT count(*) FROM pg_indexes
+                   WHERE schemaname = 'skw' AND tablename = 'entries' AND indexname = 'entries_search_vector_idx'
+                   AND indexdef ILIKE '%USING gin%'""",
+                    Int::class.java,
+                ),
+            )
+        }
+
+        @Test
+        fun `search vector follows string property writes without manual updates`() {
+            val workspace = workspace()
+            val id = entry(workspace, "{\"text\":\"alpha\",\"tags\":[\"kotlin\"]}")
+
+            fun matches(term: String) =
+                jdbc.queryForObject(
+                    "SELECT search_vector @@ plainto_tsquery('simple', ?) FROM skw.entries WHERE id = ?",
+                    Boolean::class.java,
+                    term,
+                    id,
+                )!!
+            assertTrue(matches("alpha"))
+            jdbc.update("UPDATE skw.entries SET properties = ?::jsonb WHERE id = ?", "{\"text\":\"beta\"}", id)
+            assertTrue(!matches("alpha"))
+            assertTrue(matches("beta"))
+            jdbc.update("UPDATE skw.entries SET properties = '{}'::jsonb WHERE id = ?", id)
+            assertTrue(!matches("beta"))
         }
 
         @Test

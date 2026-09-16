@@ -121,6 +121,8 @@ val integrationTest =
                 .output.classesDirs
         classpath = sourceSets.named("integrationTest").get().runtimeClasspath
         useJUnitPlatform()
+        // The integration suite intentionally shares one Testcontainers database.
+        maxParallelForks = 1
         shouldRunAfter(tasks.test)
     }
 

@@ -83,7 +83,7 @@ class JdbcWorkspaceRepository(
         val continuation =
             request.after?.let {
                 parameters
-                    .addValue("afterCreatedAt", it.createdAt)
+                    .addValue("afterCreatedAt", java.sql.Timestamp.from(it.createdAt))
                     .addValue("afterId", it.id.value)
                 "WHERE (created_at, id) > (:afterCreatedAt, :afterId)"
             } ?: ""

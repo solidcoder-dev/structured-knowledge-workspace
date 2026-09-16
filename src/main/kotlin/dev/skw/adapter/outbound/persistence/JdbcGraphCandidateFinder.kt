@@ -1,6 +1,6 @@
 package dev.skw.adapter.outbound.persistence
 
-import dev.skw.application.search.GraphCandidateFinder
+import dev.skw.application.port.out.GraphCandidateFinder
 import dev.skw.application.search.GraphDirection
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.relationship.RelationshipType

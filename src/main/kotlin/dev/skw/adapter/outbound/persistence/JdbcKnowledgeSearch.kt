@@ -36,10 +36,10 @@ class JdbcKnowledgeSearch(
         }
         plan.filters.forEachIndexed { index, filter ->
             val property = "property$index"
-            params.addValue(property, filter.property)
+            params.addValue(property, filter.property.value)
             val expression = "e.properties -> :$property"
             when (filter.operator) {
-                PropertyFilterOperator.EXISTS -> conditions += "e.properties ? :$property"
+                PropertyFilterOperator.EXISTS -> conditions += "jsonb_exists(e.properties, :$property)"
                 PropertyFilterOperator.EQUALS -> {
                     params.addValue("value$index", mapper.writeValueAsString(json.json(filter.value!!)))
                     conditions += "$expression = CAST(:value$index AS jsonb)"
@@ -66,9 +66,10 @@ class JdbcKnowledgeSearch(
         val text = plan.mode == SearchMode.TEXT && plan.query != null
         plan.continuation?.let { after ->
             if (text) {
-                params.addValue("afterRank", after.rawRank)
+                params.addValue("afterRank", after.sortValue)
                 params.addValue("afterId", after.entryId.value)
-                conditions += "($rankExpression < :afterRank OR ($rankExpression = :afterRank AND e.id > :afterId))"
+                conditions +=
+                    "($rankExpression < CAST(:afterRank AS real) OR ($rankExpression = CAST(:afterRank AS real) AND e.id > :afterId))"
             } else {
                 params.addValue("afterId", after.entryId.value)
                 conditions += "e.id > :afterId"
@@ -90,7 +91,7 @@ class JdbcKnowledgeSearch(
             if (rows.size >
                 plan.limit
             ) {
-                items.lastOrNull()?.let { SearchCursor(fingerprint = plan.fingerprint, rawRank = it.rawRank, entryId = it.entry.id) }
+                items.lastOrNull()?.let { SearchCursor(fingerprint = plan.fingerprint, sortValue = it.rawRank, entryId = it.entry.id) }
             } else {
                 null
             }

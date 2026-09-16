@@ -71,7 +71,12 @@ class JdbcWorkspaceRepositoryContractTest
         @Test
         fun `list is ordered by created time and id with keyset continuation`() {
             val createdAt = java.sql.Timestamp.from(now)
-            val ids = listOf(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()).sorted()
+            val ids =
+                listOf(
+                    UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                    UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                    UUID.fromString("00000000-0000-0000-0000-000000000003"),
+                )
             ids.forEach { id ->
                 jdbc.update(
                     "INSERT INTO skw.workspaces (id, properties, created_at, updated_at) VALUES (?, '{}'::jsonb, ?, ?)",
@@ -85,6 +90,6 @@ class JdbcWorkspaceRepositoryContractTest
             val second = repository.list(WorkspacePageRequest(2, first.nextCursor))
             assertEquals(listOf(ids[2]), second.items.map { it.id.value })
             assertEquals(null, second.nextCursor)
-            assertEquals(emptyList<UUID>(), first.items.map { it.id.value }.intersect(second.items.map { it.id.value }.toSet()))
+            assertEquals(emptySet<UUID>(), first.items.map { it.id.value }.intersect(second.items.map { it.id.value }.toSet()))
         }
     }
