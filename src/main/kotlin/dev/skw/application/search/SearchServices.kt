@@ -5,6 +5,10 @@ import dev.skw.application.port.out.GraphCandidateFinder
 import dev.skw.application.port.out.KnowledgeSearch
 import dev.skw.application.port.out.SearchPlan
 import dev.skw.application.port.out.WorkspaceRepository
+import dev.skw.application.semantic.EmbeddingProvider
+import dev.skw.application.semantic.SemanticKnowledgeSearch
+import dev.skw.application.semantic.SemanticSearchFingerprint
+import dev.skw.application.semantic.SemanticSearchPlan
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.property.PropertyName
 import dev.skw.domain.property.PropertyValue
@@ -82,6 +86,8 @@ class SearchEntriesService(
     private val entries: EntryRepository,
     private val search: KnowledgeSearch,
     private val graphCandidates: GraphCandidateFinder,
+    private val semanticSearch: SemanticKnowledgeSearch? = null,
+    private val embeddingProvider: EmbeddingProvider? = null,
 ) : SearchEntriesUseCase {
     override fun search(request: SearchQuery): SearchPage {
         val normalized = validateAndNormalize(request)
@@ -90,9 +96,40 @@ class SearchEntriesService(
                 .WorkspaceNotFound(request.workspaceId)
         }
         val effectiveMode = normalized.mode
-        if (effectiveMode == SearchMode.SEMANTIC || effectiveMode == SearchMode.HYBRID) throw SearchCapabilityUnavailable()
+        val profile = if (effectiveMode == SearchMode.SEMANTIC) embeddingProvider?.profile() else null
+        val effectiveFingerprint = profile?.let { SemanticSearchFingerprint.withProfile(request.fingerprint, it) } ?: request.fingerprint
         val candidates = normalized.graph?.let { findCandidates(request.workspaceId, it) }
         if (candidates != null && candidates.isEmpty()) return SearchPage(emptyList(), null)
+        if (effectiveMode == SearchMode.HYBRID) throw SearchCapabilityUnavailable()
+        if (effectiveMode == SearchMode.SEMANTIC) {
+            val provider = embeddingProvider ?: throw SearchCapabilityUnavailable()
+            val semantic = semanticSearch ?: throw SearchCapabilityUnavailable()
+            val query = request.query ?: throw InvalidSearchRequest("Semantic search requires query")
+            val vector =
+                try {
+                    val result = provider.embed(listOf(query))
+                    require(result.size == 1)
+                    result.single().requireCompatibleWith(profile!!)
+                } catch (_: RuntimeException) {
+                    throw SearchCapabilityUnavailable()
+                }
+            request.continuation?.let { if (it.fingerprint != effectiveFingerprint) throw InvalidSearchCursor() }
+            val page =
+                semantic.search(
+                    SemanticSearchPlan(
+                        request.workspaceId,
+                        profile!!,
+                        vector,
+                        normalized.filters,
+                        candidates,
+                        request.continuation,
+                        normalized.limit,
+                        effectiveFingerprint,
+                    ),
+                )
+            return page.copy(nextCursor = page.nextCursor?.copy(fingerprint = effectiveFingerprint))
+        }
+        request.continuation?.let { if (it.fingerprint != effectiveFingerprint) throw InvalidSearchCursor() }
         val page =
             search.search(
                 SearchPlan(
@@ -103,10 +140,10 @@ class SearchEntriesService(
                     candidates,
                     request.continuation,
                     normalized.limit,
-                    request.fingerprint,
+                    effectiveFingerprint,
                 ),
             )
-        return page.copy(nextCursor = page.nextCursor?.copy(fingerprint = request.fingerprint))
+        return page.copy(nextCursor = page.nextCursor?.copy(fingerprint = effectiveFingerprint))
     }
 
     private fun validateAndNormalize(request: SearchQuery): SearchQuery {
@@ -141,7 +178,7 @@ class SearchEntriesService(
                 throw InvalidPropertyFilter("CONTAINS requires a scalar value")
             }
         }
-        request.continuation?.let { if (it.fingerprint != request.fingerprint || it.version != 1) throw InvalidSearchCursor() }
+        request.continuation?.let { if (it.version != 1) throw InvalidSearchCursor() }
         val effectiveMode = request.mode ?: if (request.query != null) SearchMode.HYBRID else null
         if (request.continuation != null && effectiveMode == SearchMode.TEXT && request.continuation.sortValue == null) {
             throw InvalidSearchCursor()

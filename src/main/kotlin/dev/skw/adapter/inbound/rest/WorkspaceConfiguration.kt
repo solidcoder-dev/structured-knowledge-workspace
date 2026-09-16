@@ -29,6 +29,11 @@ import dev.skw.application.relationship.ListEntryRelationshipsService
 import dev.skw.application.relationship.ListEntryRelationshipsUseCase
 import dev.skw.application.search.SearchEntriesService
 import dev.skw.application.search.SearchEntriesUseCase
+import dev.skw.application.semantic.EmbeddingProvider
+import dev.skw.application.semantic.RefreshSemanticIndexService
+import dev.skw.application.semantic.RefreshSemanticIndexUseCase
+import dev.skw.application.semantic.SemanticKnowledgeSearch
+import dev.skw.application.semantic.SemanticProjectionStore
 import dev.skw.application.transaction.ExecuteTransactionService
 import dev.skw.application.transaction.ExecuteTransactionUseCase
 import dev.skw.application.workspace.CreateWorkspaceService
@@ -55,6 +60,12 @@ class WorkspaceConfiguration {
     @Bean fun workspaceJsonMapper(objectMapper: ObjectMapper) = PropertyJsonMapper(objectMapper)
 
     @Bean fun canonicalJsonHasher(objectMapper: ObjectMapper) = CanonicalJsonHasher(objectMapper)
+
+    @Bean
+    fun refreshSemanticIndexUseCase(
+        provider: EmbeddingProvider,
+        projections: SemanticProjectionStore,
+    ): RefreshSemanticIndexUseCase = RefreshSemanticIndexService(provider, projections)
 
     @Bean fun transactionMutationJacksonModule() = TransactionMutationJacksonModule()
 
@@ -121,7 +132,9 @@ class WorkspaceConfiguration {
         entries: EntryRepository,
         search: KnowledgeSearch,
         graph: GraphCandidateFinder,
-    ): SearchEntriesUseCase = SearchEntriesService(workspaces, entries, search, graph)
+        semanticSearch: SemanticKnowledgeSearch?,
+        embeddingProvider: EmbeddingProvider?,
+    ): SearchEntriesUseCase = SearchEntriesService(workspaces, entries, search, graph, semanticSearch, embeddingProvider)
 
     @Bean fun createRelationshipUseCase(
         workspaces: WorkspaceRepository,

@@ -90,3 +90,7 @@ on PostgreSQL 17.11, verify repeat execution, shape constraints, uniqueness,
 cross-workspace rejection, restricted deletion, optimistic writes and rollback.
 The health smoke test also starts with a migrated PostgreSQL database.
 An H2 database is not a substitute for these PostgreSQL constraints.
+
+## Semantic search
+
+Semantic embeddings are a derived projection of `skw.entries`; `Entry` remains the source of truth. Flyway migration V5 requires the PostgreSQL `vector` extension to be installed and available to the migration role. Semantic reads use exact pgvector cosine-distance scans over fresh projections (`source_version = entries.version`) and are eventually consistent. Stale or deleted entries are never returned, and profile identifiers isolate vector spaces. The embedding provider is an application output port; provider-specific SDKs belong in an adapter. HYBRID remains unavailable, and ANN indexes such as HNSW/IVFFlat are intentionally deferred until profile, volume, latency, and recall benchmarks justify them.
