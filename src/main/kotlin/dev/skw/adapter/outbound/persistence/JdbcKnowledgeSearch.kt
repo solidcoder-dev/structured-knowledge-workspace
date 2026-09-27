@@ -98,8 +98,8 @@ class JdbcKnowledgeSearch(
                 WorkspaceId(rs.getObject("workspace_id", java.util.UUID::class.java)),
                 json.toDomain(mapper.readTree(rs.getString("properties"))),
                 Version.of(rs.getLong("version")),
-            PostgresTime.fromDatabase(rs.getObject("created_at", java.time.OffsetDateTime::class.java)),
-            PostgresTime.fromDatabase(rs.getObject("updated_at", java.time.OffsetDateTime::class.java)),
+                PostgresTime.fromDatabase(rs.getObject("created_at", java.time.OffsetDateTime::class.java)),
+                PostgresTime.fromDatabase(rs.getObject("updated_at", java.time.OffsetDateTime::class.java)),
             ),
             rs.getDouble("raw_rank"),
         )
