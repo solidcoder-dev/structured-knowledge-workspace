@@ -3,7 +3,6 @@ package dev.skw.adapter.inbound.rest
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import dev.skw.adapter.PropertyJsonMapper
-import dev.skw.adapter.inbound.rest.generated.model.TransactionRequest
 import dev.skw.application.transaction.CreateEntryMutation
 import dev.skw.application.transaction.CreateRelationshipMutation
 import dev.skw.application.transaction.LocalEntryReference
@@ -26,7 +25,7 @@ class TransactionRestMapperTest {
                 """
                 {"mutations":[{"operation":"CREATE_RELATIONSHIP","relationship":{"sourceEntryRef":"@a","targetEntryRef":"${UUID.randomUUID()}","type":"supports"}}]}
                 """.trimIndent(),
-                TransactionRequest::class.java,
+                TransactionRequestDto::class.java,
             )
         val propertyMapper = PropertyJsonMapper(objectMapper)
         val mapper = TransactionRestMapper(EntryRestMapper(propertyMapper, ResourceEtag()), propertyMapper)
@@ -50,7 +49,7 @@ class TransactionRestMapperTest {
                   ]
                 }
                 """.trimIndent(),
-                TransactionRequest::class.java,
+                TransactionRequestDto::class.java,
             )
         val propertyMapper = PropertyJsonMapper(objectMapper)
         val mapper = TransactionRestMapper(EntryRestMapper(propertyMapper, ResourceEtag()), propertyMapper)
@@ -74,7 +73,7 @@ class TransactionRestMapperTest {
         val request =
             objectMapper.readValue(
                 """{"mutations":[{"operation":"SET_ENTRY_PROPERTY","entryId":"${UUID.randomUUID()}","expectedVersion":1,"property":"x","value":{"nested":true}}]}""",
-                TransactionRequest::class.java,
+                TransactionRequestDto::class.java,
             )
         val propertyMapper = PropertyJsonMapper(objectMapper)
         val mapper = TransactionRestMapper(EntryRestMapper(propertyMapper, ResourceEtag()), propertyMapper)

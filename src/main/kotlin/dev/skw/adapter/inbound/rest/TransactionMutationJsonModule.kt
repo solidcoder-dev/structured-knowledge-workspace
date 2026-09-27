@@ -1,12 +1,10 @@
 package dev.skw.adapter.inbound.rest
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.module.SimpleModule
 import dev.skw.adapter.inbound.rest.generated.model.CreateEntryMutation
 import dev.skw.adapter.inbound.rest.generated.model.CreateEntryRequest
@@ -14,89 +12,40 @@ import dev.skw.adapter.inbound.rest.generated.model.CreateRelationshipMutation
 import dev.skw.adapter.inbound.rest.generated.model.DeleteEntryMutation
 import dev.skw.adapter.inbound.rest.generated.model.DeleteEntryPropertyMutation
 import dev.skw.adapter.inbound.rest.generated.model.DeleteRelationshipMutation
-import dev.skw.adapter.inbound.rest.generated.model.Mutation
 import dev.skw.adapter.inbound.rest.generated.model.SetEntryPropertyMutation
 import dev.skw.adapter.inbound.rest.generated.model.TransactionRelationshipRequest
+import java.util.UUID
 
-internal enum class DecodedMutationKind {
-    CREATE_ENTRY,
-    SET_ENTRY_PROPERTY,
-    DELETE_ENTRY_PROPERTY,
-    DELETE_ENTRY,
-    CREATE_RELATIONSHIP,
-    DELETE_RELATIONSHIP,
-}
+data class TransactionRequestDto(val mutations: List<TransactionMutationDto>)
 
-internal abstract class BaseDecodedMutation : Mutation {
-    abstract val kind: DecodedMutationKind
-    override val operation = Mutation.Operation.DELETE_RELATIONSHIP
-    override val entry: CreateEntryRequest get() = error("Field is not present for this mutation")
-    override val entryId: java.util.UUID get() = error("Field is not present for this mutation")
-    override val expectedVersion: Long get() = error("Field is not present for this mutation")
-    override val `property`: String get() = error("Field is not present for this mutation")
-    override val `value`: JsonNode get() = error("Field is not present for this mutation")
-    override val relationship: TransactionRelationshipRequest get() = error("Field is not present for this mutation")
-    override val relationshipId: java.util.UUID get() = error("Field is not present for this mutation")
-    override val localRef: String? get() = null
-}
+sealed interface TransactionMutationDto
 
-class TransactionMutationDeserializer : JsonDeserializer<Mutation>() {
-    override fun deserialize(
-        parser: JsonParser,
-        context: DeserializationContext,
-    ): Mutation {
+data class CreateEntryDto(val entry: CreateEntryRequest, val localRef: String? = null) : TransactionMutationDto
+data class SetEntryPropertyDto(val entryId: UUID, val expectedVersion: Long, val property: String, val value: JsonNode) : TransactionMutationDto
+data class DeleteEntryPropertyDto(val entryId: UUID, val expectedVersion: Long, val property: String) : TransactionMutationDto
+data class DeleteEntryDto(val entryId: UUID, val expectedVersion: Long) : TransactionMutationDto
+data class CreateRelationshipDto(val relationship: TransactionRelationshipRequest) : TransactionMutationDto
+data class DeleteRelationshipDto(val relationshipId: UUID) : TransactionMutationDto
+
+class TransactionMutationDtoDeserializer : JsonDeserializer<TransactionMutationDto>() {
+    override fun deserialize(parser: JsonParser, context: DeserializationContext): TransactionMutationDto {
         val mapper = parser.codec as ObjectMapper
         val node = mapper.readTree<JsonNode>(parser)
         return when (val operation = node["operation"]?.asText()) {
-            "CREATE_ENTRY" -> {
-                val value = mapper.treeToValue(node, CreateEntryMutation::class.java)
-                object : BaseDecodedMutation() {
-                    override val kind = DecodedMutationKind.CREATE_ENTRY
-                    override val entry = value.entry
-                    override val localRef = value.localRef
-                }
+            "CREATE_ENTRY" -> mapper.treeToValue(node, CreateEntryMutation::class.java).let {
+                CreateEntryDto(it.entry, node["localRef"]?.takeUnless(JsonNode::isNull)?.asText())
             }
-            "SET_ENTRY_PROPERTY" -> {
-                val value = mapper.treeToValue(node, SetEntryPropertyMutation::class.java)
-                object : BaseDecodedMutation() {
-                    override val kind = DecodedMutationKind.SET_ENTRY_PROPERTY
-                    override val entryId = value.entryId
-                    override val expectedVersion = value.expectedVersion
-                    override val `property` = value.`property`
-                    override val `value` = value.`value`
-                }
+            "SET_ENTRY_PROPERTY" -> mapper.treeToValue(node, SetEntryPropertyMutation::class.java).let {
+                SetEntryPropertyDto(it.entryId, it.expectedVersion, it.`property`, it.value)
             }
-            "DELETE_ENTRY_PROPERTY" -> {
-                val value = mapper.treeToValue(node, DeleteEntryPropertyMutation::class.java)
-                object : BaseDecodedMutation() {
-                    override val kind = DecodedMutationKind.DELETE_ENTRY_PROPERTY
-                    override val entryId = value.entryId
-                    override val expectedVersion = value.expectedVersion
-                    override val `property` = value.`property`
-                }
+            "DELETE_ENTRY_PROPERTY" -> mapper.treeToValue(node, DeleteEntryPropertyMutation::class.java).let {
+                DeleteEntryPropertyDto(it.entryId, it.expectedVersion, it.`property`)
             }
-            "DELETE_ENTRY" -> {
-                val value = mapper.treeToValue(node, DeleteEntryMutation::class.java)
-                object : BaseDecodedMutation() {
-                    override val kind = DecodedMutationKind.DELETE_ENTRY
-                    override val entryId = value.entryId
-                    override val expectedVersion = value.expectedVersion
-                }
+            "DELETE_ENTRY" -> mapper.treeToValue(node, DeleteEntryMutation::class.java).let {
+                DeleteEntryDto(it.entryId, it.expectedVersion)
             }
-            "CREATE_RELATIONSHIP" -> {
-                val value = mapper.treeToValue(node, CreateRelationshipMutation::class.java)
-                object : BaseDecodedMutation() {
-                    override val kind = DecodedMutationKind.CREATE_RELATIONSHIP
-                    override val relationship = value.relationship
-                }
-            }
-            "DELETE_RELATIONSHIP" -> {
-                val value = mapper.treeToValue(node, DeleteRelationshipMutation::class.java)
-                object : BaseDecodedMutation() {
-                    override val kind = DecodedMutationKind.DELETE_RELATIONSHIP
-                    override val relationshipId = value.relationshipId
-                }
-            }
+            "CREATE_RELATIONSHIP" -> CreateRelationshipDto(mapper.treeToValue(node, CreateRelationshipMutation::class.java).relationship)
+            "DELETE_RELATIONSHIP" -> DeleteRelationshipDto(mapper.treeToValue(node, DeleteRelationshipMutation::class.java).relationshipId)
             else -> throw IllegalArgumentException("Unknown transaction operation '$operation'")
         }
     }
@@ -104,11 +53,6 @@ class TransactionMutationDeserializer : JsonDeserializer<Mutation>() {
 
 class TransactionMutationJacksonModule : SimpleModule("transaction-mutations") {
     init {
-        setMixInAnnotation(Mutation::class.java, MutationJacksonMixin::class.java)
-        addDeserializer(Mutation::class.java, TransactionMutationDeserializer())
+        addDeserializer(TransactionMutationDto::class.java, TransactionMutationDtoDeserializer())
     }
 }
-
-@JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
-@JsonDeserialize(using = TransactionMutationDeserializer::class)
-private abstract class MutationJacksonMixin

@@ -1,8 +1,6 @@
 package dev.skw.adapter.inbound.rest
 
 import dev.skw.adapter.PropertyJsonMapper
-import dev.skw.adapter.inbound.rest.generated.model.Mutation
-import dev.skw.adapter.inbound.rest.generated.model.TransactionRequest
 import dev.skw.adapter.inbound.rest.generated.model.TransactionResponse
 import dev.skw.application.entry.CreateEntryCommand
 import dev.skw.application.transaction.CreateEntryMutation
@@ -31,7 +29,7 @@ class TransactionRestMapper(
 ) {
     fun toCommand(
         workspaceId: UUID,
-        request: TransactionRequest,
+        request: TransactionRequestDto,
     ): TransactionCommand =
         TransactionCommand(
             WorkspaceId(workspaceId),
@@ -40,35 +38,36 @@ class TransactionRestMapper(
 
     private fun toMutation(
         workspaceId: UUID,
-        mutation: Mutation,
+        mutation: TransactionMutationDto,
     ): dev.skw.application.transaction.TransactionMutation {
-        val decoded = mutation as? BaseDecodedMutation ?: throw IllegalArgumentException("Unsupported transaction mutation")
-        return when (decoded.kind) {
-            DecodedMutationKind.CREATE_ENTRY -> {
-                val command: CreateEntryCommand = entries.toCreateCommand(workspaceId, decoded.entry)
-                CreateEntryMutation(command.properties, command.initialRelationships, decoded.localRef?.let(::LocalEntryRef))
+        return when (mutation) {
+            is CreateEntryDto -> {
+                val command: CreateEntryCommand = entries.toCreateCommand(workspaceId, mutation.entry)
+                CreateEntryMutation(command.properties, command.initialRelationships, mutation.localRef?.let(::LocalEntryRef))
             }
-            DecodedMutationKind.SET_ENTRY_PROPERTY ->
+            is SetEntryPropertyDto ->
                 SetEntryPropertyMutation(
-                    EntryId(decoded.entryId),
-                    Version.of(decoded.expectedVersion),
-                    PropertyName(decoded.`property`),
-                    properties.toDomainValue(decoded.value),
+                    EntryId(mutation.entryId),
+                    Version.of(mutation.expectedVersion),
+                    PropertyName(mutation.`property`),
+                    properties.toDomainValue(mutation.value),
                 )
-            DecodedMutationKind.DELETE_ENTRY_PROPERTY ->
+            is DeleteEntryPropertyDto ->
                 DeleteEntryPropertyMutation(
-                    EntryId(decoded.entryId),
-                    Version.of(decoded.expectedVersion),
-                    PropertyName(decoded.`property`),
+                    EntryId(mutation.entryId),
+                    Version.of(mutation.expectedVersion),
+                    PropertyName(mutation.`property`),
                 )
-            DecodedMutationKind.DELETE_ENTRY -> DeleteEntryMutation(EntryId(decoded.entryId), Version.of(decoded.expectedVersion))
-            DecodedMutationKind.CREATE_RELATIONSHIP ->
+            is DeleteEntryDto ->
+                DeleteEntryMutation(EntryId(mutation.entryId), Version.of(mutation.expectedVersion))
+            is CreateRelationshipDto ->
                 CreateRelationshipMutation(
-                    toReference(decoded.relationship.sourceEntryRef),
-                    toReference(decoded.relationship.targetEntryRef),
-                    RelationshipType(decoded.relationship.type),
+                    toReference(mutation.relationship.sourceEntryRef),
+                    toReference(mutation.relationship.targetEntryRef),
+                    RelationshipType(mutation.relationship.type),
                 )
-            DecodedMutationKind.DELETE_RELATIONSHIP -> DeleteRelationshipMutation(RelationshipId(decoded.relationshipId))
+            is DeleteRelationshipDto ->
+                DeleteRelationshipMutation(RelationshipId(mutation.relationshipId))
         }
     }
 
