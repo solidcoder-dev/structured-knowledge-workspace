@@ -65,7 +65,7 @@ class EntryRestMapper(
 
     fun toDomainValue(value: JsonNode) =
         try {
-            json.value(value)
+            json.toDomainValue(value)
         } catch (error: IllegalStateException) {
             throw IllegalArgumentException("Invalid property value", error)
         }

@@ -11,7 +11,7 @@ class PropertyJsonMapper(
 ) {
     fun toDomain(node: JsonNode): Map<PropertyName, PropertyValue> {
         require(node.isObject) { "Properties must be an object" }
-        return node.fields().asSequence().associate { (name, value) -> PropertyName(name) to value.toDomainValue() }
+        return node.fields().asSequence().associate { (name, value) -> PropertyName(name) to parseValue(value) }
     }
 
     fun toJson(properties: Map<PropertyName, PropertyValue>): String =
@@ -21,16 +21,24 @@ class PropertyJsonMapper(
             },
         )
 
-    fun value(node: JsonNode): PropertyValue = node.toDomainValue()
+    fun value(node: JsonNode): PropertyValue = toDomainValue(node)
+
+    /** Maps the transport JSON representation to the domain property contract. */
+    fun toDomainValue(node: JsonNode): PropertyValue =
+        try {
+            parseValue(node)
+        } catch (error: RuntimeException) {
+            throw IllegalArgumentException("Invalid property value", error)
+        }
 
     fun json(value: PropertyValue): JsonNode = value.toJsonNode()
 
-    private fun JsonNode.toDomainValue(): PropertyValue =
+    private fun parseValue(node: JsonNode): PropertyValue =
         when {
-            isTextual -> PropertyValue.StringValue(textValue())
-            isNumber -> PropertyValue.NumberValue(decimalValue())
-            isBoolean -> PropertyValue.BooleanValue(booleanValue())
-            isArray -> (this as ArrayNode).toListValue()
+            node.isTextual -> PropertyValue.StringValue(node.textValue())
+            node.isNumber -> PropertyValue.NumberValue(node.decimalValue())
+            node.isBoolean -> PropertyValue.BooleanValue(node.booleanValue())
+            node.isArray -> (node as ArrayNode).toListValue()
             else -> error("Property values must be scalar or homogeneous arrays")
         }
 

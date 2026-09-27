@@ -1,5 +1,6 @@
 package dev.skw.adapter.inbound.rest
 
+import dev.skw.adapter.PropertyJsonMapper
 import dev.skw.adapter.inbound.rest.generated.model.Mutation
 import dev.skw.adapter.inbound.rest.generated.model.TransactionRequest
 import dev.skw.adapter.inbound.rest.generated.model.TransactionResponse
@@ -26,6 +27,7 @@ import java.util.UUID
 
 class TransactionRestMapper(
     private val entries: EntryRestMapper,
+    private val properties: PropertyJsonMapper,
 ) {
     fun toCommand(
         workspaceId: UUID,
@@ -51,7 +53,7 @@ class TransactionRestMapper(
                     EntryId(decoded.entryId),
                     Version.of(decoded.expectedVersion),
                     PropertyName(decoded.`property`),
-                    entries.toDomainValue(decoded.value),
+                    properties.toDomainValue(decoded.value),
                 )
             DecodedMutationKind.DELETE_ENTRY_PROPERTY ->
                 DeleteEntryPropertyMutation(

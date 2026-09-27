@@ -158,7 +158,10 @@ class WorkspaceConfiguration {
     @Bean fun relationshipCursorCodec() = RelationshipCursorCodec()
 
     @Bean
-    fun transactionRestMapper(entryRestMapper: EntryRestMapper) = TransactionRestMapper(entryRestMapper)
+    fun transactionRestMapper(
+        entryRestMapper: EntryRestMapper,
+        properties: PropertyJsonMapper,
+    ) = TransactionRestMapper(entryRestMapper, properties)
 
     @Bean
     fun executeTransactionUseCase(
