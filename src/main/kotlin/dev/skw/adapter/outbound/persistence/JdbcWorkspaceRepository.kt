@@ -83,7 +83,7 @@ class JdbcWorkspaceRepository(
         val continuation =
             request.after?.let {
                 parameters
-                    .addValue("afterCreatedAt", java.sql.Timestamp.from(it.createdAt))
+                    .addValue("afterCreatedAt", PostgresTime.toDatabase(it.createdAt))
                     .addValue("afterId", it.id.value)
                 "WHERE (created_at, id) > (:afterCreatedAt, :afterId)"
             } ?: ""
@@ -112,7 +112,7 @@ class JdbcWorkspaceRepository(
             WorkspaceId(rs.getObject("id", java.util.UUID::class.java)),
             json.toDomain(objectMapper.readTree(rs.getString("properties"))),
             Version.of(rs.getLong("version")),
-            rs.getObject("created_at", java.time.OffsetDateTime::class.java).toInstant(),
-            rs.getObject("updated_at", java.time.OffsetDateTime::class.java).toInstant(),
+            PostgresTime.fromDatabase(rs.getObject("created_at", java.time.OffsetDateTime::class.java)),
+            PostgresTime.fromDatabase(rs.getObject("updated_at", java.time.OffsetDateTime::class.java)),
         )
 }

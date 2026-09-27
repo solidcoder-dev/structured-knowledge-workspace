@@ -13,7 +13,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.stereotype.Repository
 import java.nio.ByteBuffer
 import java.security.MessageDigest
-import java.time.OffsetDateTime
 
 @Repository
 class JdbcIdempotencyStore(
@@ -46,7 +45,7 @@ class JdbcIdempotencyStore(
                         objectMapper.readValue(rs.getString("response_headers"), object : TypeReference<Map<String, List<String>>>() {}),
                         rs.getBytes("response_body"),
                     ),
-                    rs.getObject("expires_at", OffsetDateTime::class.java).toInstant(),
+                    PostgresTime.fromDatabase(rs.getObject("expires_at", java.time.OffsetDateTime::class.java)),
                 )
             }.firstOrNull()
 
