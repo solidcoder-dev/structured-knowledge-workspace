@@ -45,7 +45,7 @@ class JdbcRelationshipRepository(
                     sourceEntryId,
                     targetEntryId,
                     type,
-                    rs.getObject("created_at", java.time.OffsetDateTime::class.java).toInstant(),
+                    PostgresTime.fromDatabase(rs.getObject("created_at", java.time.OffsetDateTime::class.java)),
                 )
             }
         } catch (error: DataIntegrityViolationException) {
@@ -95,7 +95,7 @@ class JdbcRelationshipRepository(
             } ?: ""
         val after =
             request.after?.let {
-                parameters.addValue("afterCreatedAt", it.createdAt).addValue("afterId", it.relationshipId.value)
+                parameters.addValue("afterCreatedAt", PostgresTime.toDatabase(it.createdAt)).addValue("afterId", it.relationshipId.value)
                 "AND (r.created_at, r.id) > (:afterCreatedAt, :afterId)"
             } ?: ""
         val rows =
@@ -128,7 +128,7 @@ class JdbcRelationshipRepository(
             EntryId(rs.getObject("source_entry_id", java.util.UUID::class.java)),
             EntryId(rs.getObject("target_entry_id", java.util.UUID::class.java)),
             RelationshipType(rs.getString("type")),
-            rs.getObject("created_at", java.time.OffsetDateTime::class.java).toInstant(),
+            PostgresTime.fromDatabase(rs.getObject("created_at", java.time.OffsetDateTime::class.java)),
         )
 
     private fun constraintName(error: DataIntegrityViolationException): String? {
