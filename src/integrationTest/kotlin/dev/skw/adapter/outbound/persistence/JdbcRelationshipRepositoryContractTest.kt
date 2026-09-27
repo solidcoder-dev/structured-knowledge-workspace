@@ -39,6 +39,11 @@ class JdbcRelationshipRepositoryContractTest
                 UUID.fromString("00000000-0000-0000-0000-000000000022"),
                 UUID.fromString("00000000-0000-0000-0000-000000000023"),
             )
+        private val extraRelationshipIds =
+            listOf(
+                UUID.fromString("00000000-0000-0000-0000-000000000024"),
+                UUID.fromString("00000000-0000-0000-0000-000000000025"),
+            )
 
         @BeforeEach
         fun clean() {
@@ -96,5 +101,78 @@ class JdbcRelationshipRepositoryContractTest
 
             assertEquals(relationshipIds.take(2), first.items.map { it.id.value })
             assertEquals(listOf(relationshipIds[2]), second.items.map { it.id.value })
+        }
+
+        @Test
+        fun `pagination covers directions filters and final pages without duplicates or omissions`() {
+            jdbc.update("INSERT INTO skw.workspaces (id) VALUES (?)", workspaceId)
+            (listOf(sourceEntryId) + targetEntryIds).forEach { entryId ->
+                jdbc.update(
+                    "INSERT INTO skw.entries (workspace_id, id) VALUES (?, ?)",
+                    workspaceId,
+                    entryId,
+                )
+            }
+            val relationships =
+                listOf(
+                    relationshipIds[0] to (sourceEntryId to targetEntryIds[0]),
+                    relationshipIds[1] to (sourceEntryId to targetEntryIds[1]),
+                    relationshipIds[2] to (targetEntryIds[0] to sourceEntryId),
+                    extraRelationshipIds[0] to (targetEntryIds[1] to sourceEntryId),
+                    extraRelationshipIds[1] to (sourceEntryId to targetEntryIds[2]),
+                )
+            relationships.forEachIndexed { index, (relationshipId, endpoints) ->
+                jdbc.update(
+                    """INSERT INTO skw.relationships (workspace_id, id, source_entry_id, target_entry_id, type, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    workspaceId,
+                    relationshipId,
+                    endpoints.first,
+                    endpoints.second,
+                    if (index % 2 == 0) "supports" else "depends-on",
+                    Timestamp.from(createdAt),
+                )
+            }
+
+            val cases =
+                listOf(
+                    RelationshipDirection.OUTGOING to null,
+                    RelationshipDirection.INCOMING to null,
+                    RelationshipDirection.BOTH to null,
+                    RelationshipDirection.BOTH to RelationshipType("supports"),
+                )
+            cases.forEach { (direction, type) ->
+                val expected =
+                    relationships
+                        .filter { (_, endpoints) ->
+                            when (direction) {
+                                RelationshipDirection.OUTGOING -> endpoints.first == sourceEntryId
+                                RelationshipDirection.INCOMING -> endpoints.second == sourceEntryId
+                                RelationshipDirection.BOTH -> sourceEntryId in endpoints.toList()
+                            }
+                        }.filter { (relationshipId, _) ->
+                            type == null || relationships.indexOfFirst { it.first == relationshipId } % 2 == 0
+                        }.map { it.first }
+                val pages = mutableListOf<RelationshipId>()
+                var cursor = null as dev.skw.application.relationship.RelationshipCursor?
+                do {
+                    val page =
+                        repository.listForEntry(
+                            RelationshipPageRequest(
+                                WorkspaceId(workspaceId),
+                                EntryId(sourceEntryId),
+                                direction,
+                                type,
+                                limit = 2,
+                                after = cursor,
+                            ),
+                        )
+                    pages += page.items.map { it.id }
+                    cursor = page.nextCursor
+                } while (cursor != null)
+
+                assertEquals(expected, pages.map { it.value })
+                assertEquals(expected.size, pages.distinct().size)
+            }
         }
     }
