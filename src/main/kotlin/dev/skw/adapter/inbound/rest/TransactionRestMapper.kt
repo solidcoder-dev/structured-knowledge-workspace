@@ -39,8 +39,8 @@ class TransactionRestMapper(
     private fun toMutation(
         workspaceId: UUID,
         mutation: TransactionMutationDto,
-    ): dev.skw.application.transaction.TransactionMutation {
-        return when (mutation) {
+    ): dev.skw.application.transaction.TransactionMutation =
+        when (mutation) {
             is CreateEntryDto -> {
                 val command: CreateEntryCommand = entries.toCreateCommand(workspaceId, mutation.entry)
                 CreateEntryMutation(command.properties, command.initialRelationships, mutation.localRef?.let(::LocalEntryRef))
@@ -69,7 +69,6 @@ class TransactionRestMapper(
             is DeleteRelationshipDto ->
                 DeleteRelationshipMutation(RelationshipId(mutation.relationshipId))
         }
-    }
 
     private fun toReference(value: String) =
         if (value.startsWith("@")) {
