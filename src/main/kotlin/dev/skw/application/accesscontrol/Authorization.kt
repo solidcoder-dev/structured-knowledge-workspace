@@ -26,11 +26,11 @@ fun interface AuthorizationPort {
         principal: PrincipalId,
         workspace: WorkspaceId,
         permission: Permission,
-        namespace: Namespace? = null,
+        namespace: Namespace?,
     )
 }
 
-fun interface AuthorizeUseCase {
+interface AuthorizeUseCase {
     fun authorize(
         principal: PrincipalId,
         workspace: WorkspaceId,
