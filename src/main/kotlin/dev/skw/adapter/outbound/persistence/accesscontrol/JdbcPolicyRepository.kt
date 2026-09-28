@@ -21,18 +21,32 @@ class JdbcPolicyRepository(
         policy: Policy,
     ) {
         val namespace = (policy.scope as? Scope.WorkspaceNamespace)?.namespace?.value
+        val scopeType = if (namespace == null) "WORKSPACE" else "NAMESPACE"
         jdbc.update(
-            """INSERT INTO skw.access_policies
-                   (workspace_id, principal_id, namespace_name, permissions)
-               VALUES (:workspaceId, :principalId, :namespaceName, CAST(:permissions AS TEXT[]))
-               ON CONFLICT (workspace_id, principal_id, (COALESCE(namespace_name, '')))
-               DO UPDATE SET permissions = EXCLUDED.permissions""",
+            """INSERT INTO skw.policies
+                   (workspace_id, principal_id, scope_type, namespace)
+               VALUES (:workspaceId, :principalId, :scopeType, :namespace)
+               ON CONFLICT (workspace_id, principal_id, scope_type)
+               DO UPDATE SET namespace = EXCLUDED.namespace""",
             MapSqlParameterSource()
                 .addValue("workspaceId", workspaceId.value)
                 .addValue("principalId", policy.principalId.value)
-                .addValue("namespaceName", namespace)
-                .addValue("permissions", postgresTextArray(policy)),
+                .addValue("scopeType", scopeType)
+                .addValue("namespace", namespace),
         )
+        jdbc.update(
+            "DELETE FROM skw.policy_permissions WHERE workspace_id = :workspaceId AND principal_id = :principalId AND scope_type = :scopeType",
+            MapSqlParameterSource().addValue("workspaceId", workspaceId.value).addValue("principalId", policy.principalId.value).addValue("scopeType", scopeType),
+        )
+        Permission.entries.filter { policy.allows(policy.principalId, it, policy.scope) }.forEach { permission ->
+            jdbc.update(
+                """INSERT INTO skw.policy_permissions
+                   (workspace_id, principal_id, scope_type, namespace, permission)
+                   VALUES (:workspaceId, :principalId, :scopeType, :namespace, :permission)""",
+                MapSqlParameterSource().addValue("workspaceId", workspaceId.value).addValue("principalId", policy.principalId.value)
+                    .addValue("scopeType", scopeType).addValue("namespace", namespace).addValue("permission", permission.name),
+            )
+        }
     }
 
     override fun find(
@@ -40,27 +54,26 @@ class JdbcPolicyRepository(
         principalId: PrincipalId,
     ): List<Policy> =
         jdbc.query(
-            """SELECT principal_id, namespace_name, permissions
-               FROM skw.access_policies
-               WHERE workspace_id = :workspaceId AND principal_id = :principalId
-               ORDER BY namespace_name NULLS FIRST""",
+            """SELECT p.principal_id, p.scope_type, p.namespace,
+                      COALESCE(array_agg(pp.permission) FILTER (WHERE pp.permission IS NOT NULL), ARRAY[]::TEXT[]) AS permissions
+               FROM skw.policies p
+               LEFT JOIN skw.policy_permissions pp ON pp.workspace_id = p.workspace_id
+                 AND pp.principal_id = p.principal_id AND pp.scope_type = p.scope_type
+                 AND pp.namespace IS NOT DISTINCT FROM p.namespace
+               WHERE p.workspace_id = :workspaceId AND p.principal_id = :principalId
+               GROUP BY p.principal_id, p.scope_type, p.namespace
+               ORDER BY p.namespace NULLS FIRST""",
             MapSqlParameterSource()
                 .addValue("workspaceId", workspaceId.value)
                 .addValue("principalId", principalId.value),
             ::mapRow,
         )
 
-    private fun postgresTextArray(policy: Policy): String =
-        Permission.entries
-            .filter { policy.allows(policy.principalId, it, policy.scope) }
-            .sortedBy { it.name }
-            .joinToString(prefix = "{", postfix = "}") { "\"${it.name}\"" }
-
     private fun mapRow(
         resultSet: ResultSet,
         rowNumber: Int,
     ): Policy {
-        val namespace = resultSet.getString("namespace_name")?.let(::Namespace)
+        val namespace = resultSet.getString("namespace")?.let(::Namespace)
         val permissions =
             (resultSet.getArray("permissions").array as Array<*>)
                 .map { Permission.valueOf(it.toString()) }

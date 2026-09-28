@@ -31,7 +31,7 @@ class JdbcNamespaceRepository(
         jdbc.query(
             """SELECT name FROM skw.namespaces
                WHERE workspace_id = :workspaceId
-               ORDER BY registered_at ASC, name ASC""",
+               ORDER BY created_at ASC, name ASC""",
             MapSqlParameterSource("workspaceId", workspaceId.value),
         ) { resultSet, _ -> Namespace(resultSet.getString("name")) }
 

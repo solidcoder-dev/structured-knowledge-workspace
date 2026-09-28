@@ -12,6 +12,8 @@ import dev.skw.application.entry.GetEntryUseCase
 import dev.skw.application.entry.ListEntriesService
 import dev.skw.application.entry.ListEntriesUseCase
 import dev.skw.application.entry.SetEntryPropertyService
+import dev.skw.application.accesscontrol.AuthorizationService
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.idempotency.IdempotentExecutionService
 import dev.skw.application.port.out.EntryRepository
 import dev.skw.application.port.out.GraphCandidateFinder
@@ -52,6 +54,9 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class WorkspaceConfiguration {
+    @Bean
+    fun authorizeUseCase(port: dev.skw.application.accesscontrol.AuthorizationPort): AuthorizeUseCase = AuthorizationService(port)
+
     @Bean
     fun idempotentExecutionService(
         store: dev.skw.application.idempotency.IdempotencyStore,
