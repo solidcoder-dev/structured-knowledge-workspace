@@ -11,6 +11,9 @@ class Policy(
         require(grantedPermissions.isNotEmpty()) { "A policy must grant at least one permission" }
     }
 
-    fun allows(principalId: PrincipalId, permission: Permission, scope: Scope): Boolean =
-        this.principalId == principalId && this.scope == scope && permission in grantedPermissions
+    fun allows(
+        principalId: PrincipalId,
+        permission: Permission,
+        scope: Scope,
+    ): Boolean = this.principalId == principalId && this.scope == scope && permission in grantedPermissions
 }

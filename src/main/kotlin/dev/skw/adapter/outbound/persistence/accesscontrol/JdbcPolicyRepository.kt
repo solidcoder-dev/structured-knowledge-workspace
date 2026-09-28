@@ -36,15 +36,24 @@ class JdbcPolicyRepository(
         )
         jdbc.update(
             "DELETE FROM skw.policy_permissions WHERE workspace_id = :workspaceId AND principal_id = :principalId AND scope_type = :scopeType",
-            MapSqlParameterSource().addValue("workspaceId", workspaceId.value).addValue("principalId", policy.principalId.value).addValue("scopeType", scopeType),
+            MapSqlParameterSource()
+                .addValue(
+                    "workspaceId",
+                    workspaceId.value,
+                ).addValue("principalId", policy.principalId.value)
+                .addValue("scopeType", scopeType),
         )
         Permission.entries.filter { policy.allows(policy.principalId, it, policy.scope) }.forEach { permission ->
             jdbc.update(
                 """INSERT INTO skw.policy_permissions
                    (workspace_id, principal_id, scope_type, namespace, permission)
                    VALUES (:workspaceId, :principalId, :scopeType, :namespace, :permission)""",
-                MapSqlParameterSource().addValue("workspaceId", workspaceId.value).addValue("principalId", policy.principalId.value)
-                    .addValue("scopeType", scopeType).addValue("namespace", namespace).addValue("permission", permission.name),
+                MapSqlParameterSource()
+                    .addValue("workspaceId", workspaceId.value)
+                    .addValue("principalId", policy.principalId.value)
+                    .addValue("scopeType", scopeType)
+                    .addValue("namespace", namespace)
+                    .addValue("permission", permission.name),
             )
         }
     }

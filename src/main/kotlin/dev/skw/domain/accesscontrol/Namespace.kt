@@ -5,7 +5,9 @@ import dev.skw.domain.relationship.RelationshipType
 
 private val NAMESPACE_PATTERN = Regex("^[a-z][a-z0-9]*([._-][a-z0-9]+)*$")
 
-class Namespace(val value: String) {
+class Namespace(
+    val value: String,
+) {
     init {
         require(value.length <= 128) { "Namespace must not exceed 128 characters" }
         require(NAMESPACE_PATTERN.matches(value)) { "Invalid namespace" }

@@ -22,7 +22,8 @@ class JdbcAuthorizationAdapter(
     ) {
         val scope = namespace?.let(Scope::WorkspaceNamespace) ?: Scope.Workspace
         if (!Authorizer(policies.find(workspace, principal)).isAllowed(principal, permission, scope)) {
-            throw dev.skw.application.accesscontrol.AuthorizationDenied(principal, workspace, permission, namespace)
+            throw dev.skw.application.accesscontrol
+                .AuthorizationDenied(principal, workspace, permission, namespace)
         }
     }
 }

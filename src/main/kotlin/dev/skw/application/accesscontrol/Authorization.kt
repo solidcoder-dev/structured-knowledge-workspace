@@ -45,14 +45,14 @@ class AuthorizationDenied(
     val permission: Permission,
     val namespace: Namespace?,
 ) : RuntimeException(
-    buildString {
-        append("Authorization denied for ")
-        append(permission)
-        append(" in workspace ")
-        append(workspace)
-        namespace?.let { append(" for namespace ").append(it) }
-    },
-)
+        buildString {
+            append("Authorization denied for ")
+            append(permission)
+            append(" in workspace ")
+            append(workspace)
+            namespace?.let { append(" for namespace ").append(it) }
+        },
+    )
 
 /**
  * Small application boundary used by mutation services.
