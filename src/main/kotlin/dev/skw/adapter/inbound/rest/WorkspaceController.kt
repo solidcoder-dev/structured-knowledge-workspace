@@ -57,6 +57,7 @@ class WorkspaceController(
     private val etag: ResourceEtag,
     private val cursorCodec: WorkspaceCursorCodec,
     private val idempotent: IdempotentRestExecutor? = null,
+    private val principalResolver: PrincipalResolver = PrincipalResolver(),
 ) : WorkspacesApi {
     override fun createWorkspace(
         idempotencyKey: String,
@@ -83,7 +84,11 @@ class WorkspaceController(
         workspaceId: UUID,
         ifMatch: String?,
     ): ResponseEntity<Unit> {
-        deleteWorkspace.delete(WorkspaceId(workspaceId), etag.requireVersion(WorkspaceId(workspaceId), ifMatch))
+        deleteWorkspace.delete(
+            WorkspaceId(workspaceId),
+            etag.requireVersion(WorkspaceId(workspaceId), ifMatch),
+            principalResolver.resolve(),
+        )
         return ResponseEntity.noContent().build()
     }
 
@@ -93,7 +98,13 @@ class WorkspaceController(
         ifMatch: String?,
     ): ResponseEntity<Workspace> {
         val id = WorkspaceId(workspaceId)
-        val updated = deleteWorkspaceProperty.delete(id, etag.requireVersion(id, ifMatch), PropertyName(propertyName))
+        val updated =
+            deleteWorkspaceProperty.delete(
+                id,
+                etag.requireVersion(id, ifMatch),
+                PropertyName(propertyName),
+                principalResolver.resolve(),
+            )
         return ResponseEntity.ok().eTag(etag.format(updated.id, updated.version)).body(mapper.toRest(updated))
     }
 
@@ -129,6 +140,7 @@ class WorkspaceController(
                 etag.requireVersion(id, ifMatch),
                 PropertyName(propertyName),
                 mapper.toDomainValue(propertyValueRequest.`value`),
+                principalResolver.resolve(),
             )
         return ResponseEntity.ok().eTag(etag.format(updated.id, updated.version)).body(mapper.toRest(updated))
     }
@@ -163,6 +175,14 @@ class WorkspaceRestMapper(
 
 @RestControllerAdvice
 class WorkspaceErrorHandler {
+    @ExceptionHandler(dev.skw.application.accesscontrol.MissingPrincipal::class)
+    fun missingPrincipal(error: dev.skw.application.accesscontrol.MissingPrincipal) =
+        problem(401, "PRINCIPAL_REQUIRED", "Principal required", error)
+
+    @ExceptionHandler(dev.skw.application.accesscontrol.AuthorizationDenied::class)
+    fun authorizationDenied(error: dev.skw.application.accesscontrol.AuthorizationDenied) =
+        problem(403, "AUTHORIZATION_DENIED", "Authorization denied", error)
+
     @ExceptionHandler(dev.skw.application.idempotency.IdempotencyKeyReused::class)
     fun idempotencyKeyReused(error: dev.skw.application.idempotency.IdempotencyKeyReused) =
         problem(409, "IDEMPOTENCY_KEY_REUSED", "Idempotency key reused", error)
@@ -243,6 +263,8 @@ class WorkspaceErrorHandler {
         val cause = error.failure
         val (status, code, title) =
             when (cause) {
+                is dev.skw.application.accesscontrol.MissingPrincipal -> Triple(401, "PRINCIPAL_REQUIRED", "Principal required")
+                is dev.skw.application.accesscontrol.AuthorizationDenied -> Triple(403, "AUTHORIZATION_DENIED", "Authorization denied")
                 is dev.skw.application.entry.EntryVersionConflict -> Triple(409, "VERSION_CONFLICT", "Version conflict")
                 is dev.skw.application.entry.EntryConnected -> Triple(409, "ENTRY_CONNECTED", "Entry is connected")
                 is RelationshipAlreadyExists -> Triple(409, "RELATIONSHIP_ALREADY_EXISTS", "Relationship already exists")

@@ -1,5 +1,6 @@
 package dev.skw.application
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.entry.CreateEntryCommand
 import dev.skw.application.entry.CreateEntryService
 import dev.skw.application.entry.Direction
@@ -15,6 +16,7 @@ import dev.skw.application.relationship.RelationshipAlreadyExists
 import dev.skw.application.workspace.WorkspacePage
 import dev.skw.application.workspace.WorkspacePageRequest
 import dev.skw.domain.Version
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.entry.Entry
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.relationship.Relationship
@@ -28,6 +30,8 @@ import java.time.Instant
 
 class EntryUseCasesTest {
     private val now = Instant.parse("2026-01-01T00:00:00Z")
+    private val principal = PrincipalId("test")
+    private val allow = AuthorizeUseCase { _, _, _, _ -> }
 
     @Test
     fun `create maps directions and preserves relationship order`() {
@@ -36,7 +40,7 @@ class EntryUseCasesTest {
         val entries = FakeEntries(other)
         val relationships = FakeRelationships()
         val result =
-            CreateEntryService(FakeWorkspaces(workspace), entries, relationships, ImmediateTransaction).create(
+            CreateEntryService(FakeWorkspaces(workspace), entries, relationships, ImmediateTransaction, allow).create(
                 CreateEntryCommand(
                     workspace.id,
                     initialRelationships =
@@ -44,6 +48,7 @@ class EntryUseCasesTest {
                             InitialRelationshipCommand(Direction.OUTGOING, other.id, RelationshipType("supports")),
                             InitialRelationshipCommand(Direction.INCOMING, other.id, RelationshipType("depends-on")),
                         ),
+                    principal = principal,
                 ),
             )
         assertEquals(listOf(result.entry.id to other.id, other.id to result.entry.id), relationships.edges)
@@ -60,7 +65,8 @@ class EntryUseCasesTest {
                 entryRepository,
                 FakeRelationships(),
                 runner,
-            ).create(CreateEntryCommand(workspace.id))
+                allow,
+            ).create(CreateEntryCommand(workspace.id, principal = principal))
         }
         assertEquals(1, runner.calls)
     }

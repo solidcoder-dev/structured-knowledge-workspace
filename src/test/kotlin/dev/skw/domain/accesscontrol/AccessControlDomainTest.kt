@@ -49,4 +49,20 @@ class AccessControlDomainTest {
         assertFalse(authorizer.isAllowed(principal, Permission.CREATE, Scope.WorkspaceNamespace(alpha)))
         assertFalse(authorizer.isAllowed(PrincipalId("unknown"), Permission.READ, Scope.Workspace))
     }
+
+    @Test
+    fun `one principal can hold independent alpha beta and workspace policies`() {
+        val policies =
+            Authorizer(
+                listOf(
+                    Policy(principal, Scope.WorkspaceNamespace(alpha), setOf(Permission.CREATE, Permission.UPDATE)),
+                    Policy(principal, Scope.WorkspaceNamespace(beta), setOf(Permission.READ)),
+                    Policy(principal, Scope.Workspace, setOf(Permission.CREATE)),
+                ),
+            )
+        assertTrue(policies.isAllowed(principal, Permission.CREATE, Scope.WorkspaceNamespace(alpha)))
+        assertTrue(policies.isAllowed(principal, Permission.READ, Scope.WorkspaceNamespace(beta)))
+        assertTrue(policies.isAllowed(principal, Permission.CREATE, Scope.Workspace))
+        assertFalse(policies.isAllowed(principal, Permission.UPDATE, Scope.WorkspaceNamespace(beta)))
+    }
 }

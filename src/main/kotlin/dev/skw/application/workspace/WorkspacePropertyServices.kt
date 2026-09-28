@@ -1,8 +1,13 @@
 package dev.skw.application.workspace
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
+import dev.skw.application.accesscontrol.requirePrincipal
 import dev.skw.application.port.out.SaveResult
 import dev.skw.application.port.out.WorkspaceRepository
 import dev.skw.domain.Version
+import dev.skw.domain.accesscontrol.Namespace
+import dev.skw.domain.accesscontrol.Permission
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.property.PropertyName
 import dev.skw.domain.property.PropertyValue
 import dev.skw.domain.workspace.Workspace
@@ -17,6 +22,7 @@ class VersionConflict(
 class SetWorkspacePropertyService(
     private val repository: WorkspaceRepository,
     private val getWorkspace: GetWorkspaceUseCase = GetWorkspaceService(repository),
+    private val authorize: AuthorizeUseCase,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun set(
@@ -24,7 +30,14 @@ class SetWorkspacePropertyService(
         expectedVersion: Version,
         name: PropertyName,
         value: PropertyValue,
-    ) = persist(getWorkspace.get(id).setProperty(name, value, clock.instant()), id, expectedVersion)
+        principal: PrincipalId? = null,
+    ) = persist(
+        getWorkspace.get(id).setProperty(name, value, clock.instant()).also {
+            authorize.authorize(requirePrincipal(principal), id, Permission.UPDATE, Namespace.from(name.value))
+        },
+        id,
+        expectedVersion,
+    )
 
     private fun persist(
         workspace: Workspace,
@@ -40,13 +53,21 @@ class SetWorkspacePropertyService(
 class DeleteWorkspacePropertyService(
     private val repository: WorkspaceRepository,
     private val getWorkspace: GetWorkspaceUseCase = GetWorkspaceService(repository),
+    private val authorize: AuthorizeUseCase,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun delete(
         id: WorkspaceId,
         expectedVersion: Version,
         name: PropertyName,
-    ) = persist(getWorkspace.get(id).removeProperty(name, clock.instant()), id, expectedVersion)
+        principal: PrincipalId? = null,
+    ) = persist(
+        getWorkspace.get(id).removeProperty(name, clock.instant()).also {
+            authorize.authorize(requirePrincipal(principal), id, Permission.DELETE, Namespace.from(name.value))
+        },
+        id,
+        expectedVersion,
+    )
 
     private fun persist(
         workspace: Workspace,

@@ -1,9 +1,14 @@
 package dev.skw.application.relationship
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
+import dev.skw.application.accesscontrol.requirePrincipal
 import dev.skw.application.port.out.EntryRepository
 import dev.skw.application.port.out.RelationshipRepository
 import dev.skw.application.port.out.WorkspaceRepository
 import dev.skw.application.workspace.WorkspaceNotFound
+import dev.skw.domain.accesscontrol.Namespace
+import dev.skw.domain.accesscontrol.Permission
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.relationship.Relationship
 import dev.skw.domain.relationship.RelationshipId
@@ -26,6 +31,7 @@ data class CreateRelationshipCommand(
     val sourceEntryId: EntryId,
     val targetEntryId: EntryId,
     val type: RelationshipType,
+    val principal: PrincipalId? = null,
 )
 
 fun interface CreateRelationshipUseCase {
@@ -36,8 +42,10 @@ class CreateRelationshipService(
     private val workspaces: WorkspaceRepository,
     private val entries: EntryRepository,
     private val relationships: RelationshipRepository,
+    private val authorize: AuthorizeUseCase,
 ) : CreateRelationshipUseCase {
     override fun create(command: CreateRelationshipCommand): Relationship {
+        authorize.authorize(requirePrincipal(command.principal), command.workspaceId, Permission.CREATE, Namespace.from(command.type.value))
         if (workspaces.findById(command.workspaceId) == null) throw WorkspaceNotFound(command.workspaceId)
         val existing = entries.findExistingIds(command.workspaceId, setOf(command.sourceEntryId, command.targetEntryId))
         if (command.sourceEntryId !in existing || command.targetEntryId !in existing) throw RelationshipEndpointMissing()
@@ -61,20 +69,36 @@ class GetRelationshipService(
     ) = relationships.findById(workspaceId, relationshipId) ?: throw RelationshipNotFound(relationshipId)
 }
 
-fun interface DeleteRelationshipUseCase {
+interface DeleteRelationshipUseCase {
     fun delete(
         workspaceId: WorkspaceId,
         relationshipId: RelationshipId,
     )
+
+    fun delete(
+        workspaceId: WorkspaceId,
+        relationshipId: RelationshipId,
+        principal: PrincipalId?,
+    ) = delete(workspaceId, relationshipId)
 }
 
 class DeleteRelationshipService(
     private val relationships: RelationshipRepository,
+    private val getRelationship: GetRelationshipUseCase,
+    private val authorize: AuthorizeUseCase,
 ) : DeleteRelationshipUseCase {
     override fun delete(
         workspaceId: WorkspaceId,
         relationshipId: RelationshipId,
+    ) = delete(workspaceId, relationshipId, null)
+
+    override fun delete(
+        workspaceId: WorkspaceId,
+        relationshipId: RelationshipId,
+        principal: PrincipalId?,
     ) {
+        val relationship = getRelationship.get(workspaceId, relationshipId)
+        authorize.authorize(requirePrincipal(principal), workspaceId, Permission.DELETE, Namespace.from(relationship.type.value))
         if (!relationships.delete(workspaceId, relationshipId)) throw RelationshipNotFound(relationshipId)
     }
 }

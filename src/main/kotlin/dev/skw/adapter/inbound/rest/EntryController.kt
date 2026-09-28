@@ -34,6 +34,7 @@ class EntryController(
     private val etag: ResourceEtag,
     private val cursorCodec: EntryCursorCodec,
     private val idempotent: IdempotentRestExecutor,
+    private val principalResolver: PrincipalResolver = PrincipalResolver(),
 ) : EntriesApi {
     override fun createEntry(
         workspaceId: UUID,
@@ -41,12 +42,15 @@ class EntryController(
         createEntryRequest: CreateEntryRequest,
     ): ResponseEntity<CreateEntryResponse> =
         idempotent.execute(
-            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/entries", workspaceId.toString()),
+            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/entries", workspaceId.toString(), principalResolver.resolve().value),
             idempotencyKey,
             createEntryRequest,
             CreateEntryResponse::class.java,
         ) {
-            val result = createEntry.create(mapper.toCreateCommand(workspaceId, createEntryRequest))
+            val result =
+                createEntry.create(
+                    mapper.toCreateCommand(workspaceId, createEntryRequest).copy(principal = principalResolver.resolve()),
+                )
             ResponseEntity
                 .created(URI.create("/api/v1/workspaces/$workspaceId/entries/${result.entry.id}"))
                 .eTag(etag.format(result.entry.id.value, result.entry.version))
@@ -86,6 +90,7 @@ class EntryController(
                 etag.requireVersion(entryId, ifMatch),
                 PropertyName(propertyName),
                 mapper.toDomainValue(propertyValueRequest.`value`),
+                principalResolver.resolve(),
             )
         return ResponseEntity.ok().eTag(etag.format(entryId, value.version)).body(mapper.toRest(value))
     }
@@ -97,7 +102,14 @@ class EntryController(
         ifMatch: String?,
     ): ResponseEntity<Entry> {
         val id = EntryId(entryId)
-        val value = deleteProperty.delete(WorkspaceId(workspaceId), id, etag.requireVersion(entryId, ifMatch), PropertyName(propertyName))
+        val value =
+            deleteProperty.delete(
+                WorkspaceId(workspaceId),
+                id,
+                etag.requireVersion(entryId, ifMatch),
+                PropertyName(propertyName),
+                principalResolver.resolve(),
+            )
         return ResponseEntity.ok().eTag(etag.format(entryId, value.version)).body(mapper.toRest(value))
     }
 
@@ -106,7 +118,7 @@ class EntryController(
         entryId: UUID,
         ifMatch: String?,
     ): ResponseEntity<Unit> {
-        deleteEntry.delete(WorkspaceId(workspaceId), EntryId(entryId), etag.requireVersion(entryId, ifMatch))
+        deleteEntry.delete(WorkspaceId(workspaceId), EntryId(entryId), etag.requireVersion(entryId, ifMatch), principalResolver.resolve())
         return ResponseEntity.noContent().build()
     }
 }

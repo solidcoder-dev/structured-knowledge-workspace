@@ -1,5 +1,6 @@
 package dev.skw.application
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.port.out.DeleteResult
 import dev.skw.application.port.out.SaveResult
 import dev.skw.application.port.out.WorkspaceRepository
@@ -32,6 +33,10 @@ import java.time.ZoneOffset
 class WorkspaceUseCasesTest {
     private val now = Instant.parse("2026-01-01T00:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
+    private val allow = AuthorizeUseCase { _, _, _, _ -> }
+    private val principal =
+        dev.skw.domain.accesscontrol
+            .PrincipalId("test")
 
     @Test
     fun `create delegates to repository and get returns stored workspace`() {
@@ -53,15 +58,21 @@ class WorkspaceUseCasesTest {
         val repository = FakeWorkspaceRepository()
         val workspace = Workspace.create(now = now)
         repository.workspace = workspace
-        DeleteWorkspaceService(repository).delete(workspace.id, workspace.version)
+        DeleteWorkspaceService(repository, allow).delete(workspace.id, workspace.version, principal)
         assertEquals(DeleteResult.DELETED, repository.lastDelete)
 
         repository.deleteResult = DeleteResult.NOT_FOUND
-        assertThrows(WorkspaceNotFound::class.java) { DeleteWorkspaceService(repository).delete(workspace.id, workspace.version) }
+        assertThrows(
+            WorkspaceNotFound::class.java,
+        ) { DeleteWorkspaceService(repository, allow).delete(workspace.id, workspace.version, principal) }
         repository.deleteResult = DeleteResult.VERSION_CONFLICT
-        assertThrows(VersionConflict::class.java) { DeleteWorkspaceService(repository).delete(workspace.id, workspace.version) }
+        assertThrows(
+            VersionConflict::class.java,
+        ) { DeleteWorkspaceService(repository, allow).delete(workspace.id, workspace.version, principal) }
         repository.deleteResult = DeleteResult.NOT_EMPTY
-        assertThrows(WorkspaceNotEmpty::class.java) { DeleteWorkspaceService(repository).delete(workspace.id, workspace.version) }
+        assertThrows(
+            WorkspaceNotEmpty::class.java,
+        ) { DeleteWorkspaceService(repository, allow).delete(workspace.id, workspace.version, principal) }
     }
 
     @Test
@@ -71,20 +82,37 @@ class WorkspaceUseCasesTest {
         repository.workspace = workspace
         val name = PropertyName("kind")
         val value = PropertyValue.StringValue("capability")
-        val changed = SetWorkspacePropertyService(repository, clock = clock).set(workspace.id, workspace.version, name, value)
+        val changed =
+            SetWorkspacePropertyService(
+                repository,
+                authorize = allow,
+                clock = clock,
+            ).set(workspace.id, workspace.version, name, value, principal)
         assertEquals(2, changed.version.value)
         assertEquals(
             now,
-            SetWorkspacePropertyService(repository, clock = clock).set(workspace.id, workspace.version, name, value).updatedAt,
+            SetWorkspacePropertyService(
+                repository,
+                authorize = allow,
+                clock = clock,
+            ).set(workspace.id, workspace.version, name, value, principal).updatedAt,
         )
 
         repository.saveResult = SaveResult.VERSION_CONFLICT
         assertThrows(VersionConflict::class.java) {
-            SetWorkspacePropertyService(repository, clock = clock).set(workspace.id, workspace.version, name, value)
+            SetWorkspacePropertyService(
+                repository,
+                authorize = allow,
+                clock = clock,
+            ).set(workspace.id, workspace.version, name, value, principal)
         }
         repository.workspace = null
         assertThrows(WorkspaceNotFound::class.java) {
-            DeleteWorkspacePropertyService(repository, clock = clock).delete(workspace.id, workspace.version, name)
+            DeleteWorkspacePropertyService(
+                repository,
+                authorize = allow,
+                clock = clock,
+            ).delete(workspace.id, workspace.version, name, principal)
         }
     }
 
@@ -94,11 +122,21 @@ class WorkspaceUseCasesTest {
         val workspace = Workspace.create(now = now)
         repository.workspace = workspace
         val name = PropertyName("kind")
-        val absent = DeleteWorkspacePropertyService(repository, clock = clock).delete(workspace.id, workspace.version, name)
+        val absent =
+            DeleteWorkspacePropertyService(
+                repository,
+                authorize = allow,
+                clock = clock,
+            ).delete(workspace.id, workspace.version, name, principal)
         assertEquals(workspace.version, absent.version)
         val withProperty = workspace.setProperty(name, PropertyValue.BooleanValue(true), now)
         repository.workspace = withProperty
-        val removed = DeleteWorkspacePropertyService(repository, clock = clock).delete(withProperty.id, withProperty.version, name)
+        val removed =
+            DeleteWorkspacePropertyService(
+                repository,
+                authorize = allow,
+                clock = clock,
+            ).delete(withProperty.id, withProperty.version, name, principal)
         assertEquals(3, removed.version.value)
     }
 

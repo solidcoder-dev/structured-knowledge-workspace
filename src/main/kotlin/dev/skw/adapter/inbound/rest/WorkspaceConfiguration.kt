@@ -54,6 +54,8 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class WorkspaceConfiguration {
+    @Bean fun principalResolver() = PrincipalResolver()
+
     @Bean
     fun authorizeUseCase(port: dev.skw.application.accesscontrol.AuthorizationPort): AuthorizeUseCase = AuthorizationService(port)
 
@@ -79,11 +81,20 @@ class WorkspaceConfiguration {
 
     @Bean fun getWorkspaceUseCase(repository: WorkspaceRepository): GetWorkspaceUseCase = GetWorkspaceService(repository)
 
-    @Bean fun setWorkspacePropertyService(repository: WorkspaceRepository) = SetWorkspacePropertyService(repository)
+    @Bean fun setWorkspacePropertyService(
+        repository: WorkspaceRepository,
+        authorize: AuthorizeUseCase,
+    ) = SetWorkspacePropertyService(repository, authorize = authorize)
 
-    @Bean fun deleteWorkspacePropertyService(repository: WorkspaceRepository) = DeleteWorkspacePropertyService(repository)
+    @Bean fun deleteWorkspacePropertyService(
+        repository: WorkspaceRepository,
+        authorize: AuthorizeUseCase,
+    ) = DeleteWorkspacePropertyService(repository, authorize = authorize)
 
-    @Bean fun deleteWorkspaceUseCase(repository: WorkspaceRepository): DeleteWorkspaceUseCase = DeleteWorkspaceService(repository)
+    @Bean fun deleteWorkspaceUseCase(
+        repository: WorkspaceRepository,
+        authorize: AuthorizeUseCase,
+    ): DeleteWorkspaceUseCase = DeleteWorkspaceService(repository, authorize)
 
     @Bean fun listWorkspacesUseCase(repository: WorkspaceRepository): ListWorkspacesUseCase = ListWorkspacesService(repository)
 
@@ -101,7 +112,8 @@ class WorkspaceConfiguration {
         entries: EntryRepository,
         relationships: RelationshipRepository,
         transactions: TransactionRunner,
-    ): CreateEntryUseCase = CreateEntryService(workspaces, entries, relationships, transactions)
+        authorize: AuthorizeUseCase,
+    ): CreateEntryUseCase = CreateEntryService(workspaces, entries, relationships, transactions, authorize)
 
     @Bean fun getEntryUseCase(entries: EntryRepository): GetEntryUseCase = GetEntryService(entries)
 
@@ -110,11 +122,20 @@ class WorkspaceConfiguration {
         entries: EntryRepository,
     ): ListEntriesUseCase = ListEntriesService(workspaces, entries)
 
-    @Bean fun setEntryPropertyService(entries: EntryRepository) = SetEntryPropertyService(entries)
+    @Bean fun setEntryPropertyService(
+        entries: EntryRepository,
+        authorize: AuthorizeUseCase,
+    ) = SetEntryPropertyService(entries, authorize = authorize)
 
-    @Bean fun deleteEntryPropertyService(entries: EntryRepository) = DeleteEntryPropertyService(entries)
+    @Bean fun deleteEntryPropertyService(
+        entries: EntryRepository,
+        authorize: AuthorizeUseCase,
+    ) = DeleteEntryPropertyService(entries, authorize = authorize)
 
-    @Bean fun deleteEntryUseCase(entries: EntryRepository): DeleteEntryUseCase = DeleteEntryService(entries)
+    @Bean fun deleteEntryUseCase(
+        entries: EntryRepository,
+        authorize: AuthorizeUseCase,
+    ): DeleteEntryUseCase = DeleteEntryService(entries, authorize)
 
     @Bean fun entryCursorCodec() = EntryCursorCodec()
 
@@ -147,12 +168,16 @@ class WorkspaceConfiguration {
         workspaces: WorkspaceRepository,
         entries: EntryRepository,
         relationships: RelationshipRepository,
-    ): CreateRelationshipUseCase = CreateRelationshipService(workspaces, entries, relationships)
+        authorize: AuthorizeUseCase,
+    ): CreateRelationshipUseCase = CreateRelationshipService(workspaces, entries, relationships, authorize)
 
     @Bean fun getRelationshipUseCase(relationships: RelationshipRepository): GetRelationshipUseCase = GetRelationshipService(relationships)
 
-    @Bean fun deleteRelationshipUseCase(relationships: RelationshipRepository): DeleteRelationshipUseCase =
-        DeleteRelationshipService(relationships)
+    @Bean fun deleteRelationshipUseCase(
+        relationships: RelationshipRepository,
+        getRelationship: GetRelationshipUseCase,
+        authorize: AuthorizeUseCase,
+    ): DeleteRelationshipUseCase = DeleteRelationshipService(relationships, getRelationship, authorize)
 
     @Bean fun listEntryRelationshipsUseCase(
         workspaces: WorkspaceRepository,
@@ -177,14 +202,14 @@ class WorkspaceConfiguration {
         createRelationship: CreateRelationshipUseCase,
         getRelationship: GetRelationshipUseCase,
         deleteRelationship: DeleteRelationshipUseCase,
-        authorize: AuthorizeUseCase?,
+        authorize: AuthorizeUseCase,
     ): ExecuteTransactionUseCase =
         ExecuteTransactionService(
             workspaces,
-            CreateEntryService(workspaces, entries, relationships, transactions),
-            SetEntryPropertyService(entries),
-            DeleteEntryPropertyService(entries),
-            DeleteEntryService(entries),
+            CreateEntryService(workspaces, entries, relationships, transactions, authorize),
+            SetEntryPropertyService(entries, authorize = authorize),
+            DeleteEntryPropertyService(entries, authorize = authorize),
+            DeleteEntryService(entries, authorize),
             createRelationship,
             getRelationship,
             deleteRelationship,

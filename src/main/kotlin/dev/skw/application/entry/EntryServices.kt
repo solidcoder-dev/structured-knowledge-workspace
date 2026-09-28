@@ -1,5 +1,7 @@
 package dev.skw.application.entry
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
+import dev.skw.application.accesscontrol.requirePrincipal
 import dev.skw.application.port.out.EntryDeleteResult
 import dev.skw.application.port.out.EntryPageRequest
 import dev.skw.application.port.out.EntryRepository
@@ -10,6 +12,9 @@ import dev.skw.application.port.out.WorkspaceRepository
 import dev.skw.application.relationship.RelationshipEndpointMissing
 import dev.skw.application.workspace.WorkspaceNotFound
 import dev.skw.domain.Version
+import dev.skw.domain.accesscontrol.Namespace
+import dev.skw.domain.accesscontrol.Permission
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.entry.Entry
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.property.PropertyName
@@ -32,6 +37,7 @@ data class CreateEntryCommand(
     val workspaceId: WorkspaceId,
     val properties: Map<PropertyName, PropertyValue> = emptyMap(),
     val initialRelationships: List<InitialRelationshipCommand> = emptyList(),
+    val principal: PrincipalId? = null,
 )
 
 data class CreateEntryResult(
@@ -89,9 +95,16 @@ class CreateEntryService(
     private val entryRepository: EntryRepository,
     private val relationshipRepository: RelationshipRepository,
     private val transactionRunner: TransactionRunner,
+    private val authorize: AuthorizeUseCase,
     private val clock: Clock = Clock.systemUTC(),
 ) : CreateEntryUseCase {
     override fun create(command: CreateEntryCommand): CreateEntryResult {
+        val principal = requirePrincipal(command.principal)
+        authorize.authorize(principal, command.workspaceId, Permission.CREATE, null)
+        command.properties.keys.forEach { authorize.authorize(principal, command.workspaceId, Permission.CREATE, Namespace.from(it.value)) }
+        command.initialRelationships.forEach {
+            authorize.authorize(principal, command.workspaceId, Permission.CREATE, Namespace.from(it.type.value))
+        }
         require(command.initialRelationships.size <= 100)
         if (workspaceRepository.findById(command.workspaceId) == null) throw WorkspaceNotFound(command.workspaceId)
         val ids = command.initialRelationships.map { it.otherEntryId }.toSet()
@@ -139,6 +152,7 @@ class ListEntriesService(
 class SetEntryPropertyService(
     private val repository: EntryRepository,
     private val getEntry: GetEntryUseCase = GetEntryService(repository),
+    private val authorize: AuthorizeUseCase,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun set(
@@ -147,7 +161,13 @@ class SetEntryPropertyService(
         expectedVersion: Version,
         name: PropertyName,
         value: PropertyValue,
-    ) = persist(getEntry.get(workspaceId, entryId).setProperty(name, value, clock.instant()), expectedVersion)
+        principal: PrincipalId? = null,
+    ) = persist(
+        getEntry.get(workspaceId, entryId).setProperty(name, value, clock.instant()).also {
+            authorize.authorize(requirePrincipal(principal), workspaceId, Permission.UPDATE, Namespace.from(name.value))
+        },
+        expectedVersion,
+    )
 
     private fun persist(
         entry: Entry,
@@ -162,6 +182,7 @@ class SetEntryPropertyService(
 class DeleteEntryPropertyService(
     private val repository: EntryRepository,
     private val getEntry: GetEntryUseCase = GetEntryService(repository),
+    private val authorize: AuthorizeUseCase,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun delete(
@@ -169,7 +190,13 @@ class DeleteEntryPropertyService(
         entryId: EntryId,
         expectedVersion: Version,
         name: PropertyName,
-    ) = persist(getEntry.get(workspaceId, entryId).removeProperty(name, clock.instant()), expectedVersion)
+        principal: PrincipalId? = null,
+    ) = persist(
+        getEntry.get(workspaceId, entryId).removeProperty(name, clock.instant()).also {
+            authorize.authorize(requirePrincipal(principal), workspaceId, Permission.DELETE, Namespace.from(name.value))
+        },
+        expectedVersion,
+    )
 
     private fun persist(
         entry: Entry,
@@ -181,25 +208,43 @@ class DeleteEntryPropertyService(
     }
 }
 
-fun interface DeleteEntryUseCase {
+interface DeleteEntryUseCase {
     fun delete(
         workspaceId: WorkspaceId,
         entryId: EntryId,
         expectedVersion: Version,
     )
+
+    fun delete(
+        workspaceId: WorkspaceId,
+        entryId: EntryId,
+        expectedVersion: Version,
+        principal: PrincipalId?,
+    ) = delete(workspaceId, entryId, expectedVersion)
 }
 
 class DeleteEntryService(
     private val repository: EntryRepository,
+    private val authorize: AuthorizeUseCase,
 ) : DeleteEntryUseCase {
     override fun delete(
         workspaceId: WorkspaceId,
         entryId: EntryId,
         expectedVersion: Version,
-    ) = when (repository.delete(workspaceId, entryId, expectedVersion)) {
-        EntryDeleteResult.DELETED -> Unit
-        EntryDeleteResult.NOT_FOUND -> throw EntryNotFound(entryId)
-        EntryDeleteResult.VERSION_CONFLICT -> throw EntryVersionConflict(entryId, expectedVersion)
-        EntryDeleteResult.CONNECTED -> throw EntryConnected(entryId)
+    ) = delete(workspaceId, entryId, expectedVersion, null)
+
+    override fun delete(
+        workspaceId: WorkspaceId,
+        entryId: EntryId,
+        expectedVersion: Version,
+        principal: PrincipalId?,
+    ) {
+        authorize.authorize(requirePrincipal(principal), workspaceId, Permission.DELETE, null)
+        when (repository.delete(workspaceId, entryId, expectedVersion)) {
+            EntryDeleteResult.DELETED -> Unit
+            EntryDeleteResult.NOT_FOUND -> throw EntryNotFound(entryId)
+            EntryDeleteResult.VERSION_CONFLICT -> throw EntryVersionConflict(entryId, expectedVersion)
+            EntryDeleteResult.CONNECTED -> throw EntryConnected(entryId)
+        }
     }
 }

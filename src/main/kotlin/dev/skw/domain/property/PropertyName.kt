@@ -1,6 +1,6 @@
 package dev.skw.domain.property
 
-private val PROPERTY_NAME_PATTERN = Regex("^[a-z][a-z0-9]*([._-][a-z0-9]+)*$")
+private val PROPERTY_NAME_PATTERN = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 
 class PropertyName(
     val value: String,

@@ -1,6 +1,6 @@
 package dev.skw.domain.relationship
 
-private val RELATIONSHIP_TYPE_PATTERN = Regex("^[a-z][a-z0-9]*([._-][a-z0-9]+)*$")
+private val RELATIONSHIP_TYPE_PATTERN = Regex("^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 
 class RelationshipType(
     val value: String,

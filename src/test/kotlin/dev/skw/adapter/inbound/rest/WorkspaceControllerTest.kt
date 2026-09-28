@@ -3,6 +3,7 @@ package dev.skw.adapter.inbound.rest
 import com.fasterxml.jackson.databind.ObjectMapper
 import dev.skw.adapter.PropertyJsonMapper
 import dev.skw.adapter.inbound.rest.generated.model.CreateWorkspaceRequest
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.port.out.DeleteResult
 import dev.skw.application.port.out.SaveResult
 import dev.skw.application.port.out.WorkspaceRepository
@@ -14,6 +15,7 @@ import dev.skw.application.workspace.ListWorkspacesService
 import dev.skw.application.workspace.SetWorkspacePropertyService
 import dev.skw.application.workspace.WorkspacePage
 import dev.skw.application.workspace.WorkspacePageRequest
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.property.PropertyName
 import dev.skw.domain.property.PropertyValue
 import dev.skw.domain.workspace.Workspace
@@ -24,6 +26,8 @@ import java.time.Instant
 import java.util.UUID
 
 class WorkspaceControllerTest {
+    private val allow = AuthorizeUseCase { _, _, _, _ -> }
+
     @Test
     fun `post and get map properties headers and location`() {
         val workspace =
@@ -35,9 +39,9 @@ class WorkspaceControllerTest {
             WorkspaceController(
                 CreateWorkspaceUseCase { workspace },
                 GetWorkspaceUseCase { workspace },
-                SetWorkspacePropertyService(FakeRepository(workspace)),
-                DeleteWorkspacePropertyService(FakeRepository(workspace)),
-                DeleteWorkspaceService(FakeRepository(workspace)),
+                SetWorkspacePropertyService(FakeRepository(workspace), authorize = allow),
+                DeleteWorkspacePropertyService(FakeRepository(workspace), authorize = allow),
+                DeleteWorkspaceService(FakeRepository(workspace), allow),
                 ListWorkspacesService(FakeRepository(workspace)),
                 WorkspaceRestMapper(PropertyJsonMapper(ObjectMapper())),
                 ResourceEtag(),
@@ -129,12 +133,13 @@ class WorkspaceControllerTest {
         WorkspaceController(
             CreateWorkspaceUseCase { workspace },
             GetWorkspaceUseCase { workspace },
-            SetWorkspacePropertyService(FakeRepository(workspace)),
-            DeleteWorkspacePropertyService(FakeRepository(workspace)),
-            DeleteWorkspaceService(FakeRepository(workspace)),
+            SetWorkspacePropertyService(FakeRepository(workspace), authorize = allow),
+            DeleteWorkspacePropertyService(FakeRepository(workspace), authorize = allow),
+            DeleteWorkspaceService(FakeRepository(workspace), allow),
             ListWorkspacesService(FakeRepository(workspace)),
             WorkspaceRestMapper(PropertyJsonMapper(ObjectMapper())),
             ResourceEtag(),
             WorkspaceCursorCodec(),
+            principalResolver = PrincipalResolver(PrincipalId("test")),
         )
 }

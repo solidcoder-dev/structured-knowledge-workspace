@@ -30,14 +30,20 @@ fun interface AuthorizationPort {
     )
 }
 
-interface AuthorizeUseCase {
+fun interface AuthorizeUseCase {
     fun authorize(
         principal: PrincipalId,
         workspace: WorkspaceId,
         permission: Permission,
-        namespace: Namespace? = null,
+        namespace: Namespace?,
     )
 }
+
+fun AuthorizeUseCase.authorize(
+    principal: PrincipalId,
+    workspace: WorkspaceId,
+    permission: Permission,
+) = authorize(principal, workspace, permission, null)
 
 class AuthorizationDenied(
     val principal: PrincipalId,
@@ -53,6 +59,12 @@ class AuthorizationDenied(
             namespace?.let { append(" for namespace ").append(it) }
         },
     )
+
+class MissingPrincipal : RuntimeException("A principal is required for this mutation")
+
+class AuthorizationInfrastructureUnavailable : RuntimeException("Authorization infrastructure is unavailable")
+
+fun requirePrincipal(principal: PrincipalId?): PrincipalId = principal ?: throw MissingPrincipal()
 
 /**
  * Small application boundary used by mutation services.

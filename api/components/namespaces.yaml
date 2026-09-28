@@ -1,9 +1,9 @@
 NamespaceName:
   type: string
-  pattern: '^[a-z][a-z0-9]*$'
+  pattern: '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$'
   minLength: 1
   maxLength: 64
-  description: Lowercase vocabulary prefix used by namespaced Property names and Relationship types.
+  description: Lowercase vocabulary prefix. Qualified knowledge identifiers use namespace.local; this field never contains a dot.
   example: alpha
 
 Namespace:

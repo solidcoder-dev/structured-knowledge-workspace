@@ -1,5 +1,6 @@
 package dev.skw.application
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.port.out.DeleteResult
 import dev.skw.application.port.out.EntryDeleteResult
 import dev.skw.application.port.out.EntryPageRequest
@@ -20,6 +21,7 @@ import dev.skw.application.relationship.RelationshipNotFound
 import dev.skw.application.relationship.RelationshipPage
 import dev.skw.application.relationship.RelationshipPageRequest
 import dev.skw.domain.Version
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.entry.Entry
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.relationship.Relationship
@@ -35,6 +37,8 @@ import java.util.UUID
 
 class RelationshipUseCasesTest {
     private val now = Instant.parse("2026-01-01T00:00:00Z")
+    private val principal = PrincipalId("test")
+    private val allow = AuthorizeUseCase { _, _, _, _ -> }
 
     @Test
     fun `create validates workspace and both endpoints before delegating`() {
@@ -43,13 +47,13 @@ class RelationshipUseCasesTest {
         val target = Entry.create(workspace.id, now = now)
         val relationships = RecordingRelationships()
         val created =
-            CreateRelationshipService(FakeWorkspaces(workspace), FakeEntries(source, target), relationships).create(
-                CreateRelationshipCommand(workspace.id, source.id, target.id, RelationshipType("supports")),
+            CreateRelationshipService(FakeWorkspaces(workspace), FakeEntries(source, target), relationships, allow).create(
+                CreateRelationshipCommand(workspace.id, source.id, target.id, RelationshipType("supports"), principal),
             )
         assertEquals(created, relationships.created)
         assertThrows(dev.skw.application.relationship.RelationshipEndpointMissing::class.java) {
-            CreateRelationshipService(FakeWorkspaces(workspace), FakeEntries(source), relationships).create(
-                CreateRelationshipCommand(workspace.id, source.id, target.id, RelationshipType("supports")),
+            CreateRelationshipService(FakeWorkspaces(workspace), FakeEntries(source), relationships, allow).create(
+                CreateRelationshipCommand(workspace.id, source.id, target.id, RelationshipType("supports"), principal),
             )
         }
     }
@@ -62,8 +66,10 @@ class RelationshipUseCasesTest {
         val relationships = RecordingRelationships(edge)
         assertEquals(edge, GetRelationshipService(relationships).get(workspace.id, edge.id))
         assertThrows(RelationshipNotFound::class.java) { GetRelationshipService(relationships).get(otherWorkspace.id, edge.id) }
-        DeleteRelationshipService(relationships).delete(workspace.id, edge.id)
-        assertThrows(RelationshipNotFound::class.java) { DeleteRelationshipService(relationships).delete(workspace.id, edge.id) }
+        DeleteRelationshipService(relationships, GetRelationshipService(relationships), allow).delete(workspace.id, edge.id, principal)
+        assertThrows(RelationshipNotFound::class.java) {
+            DeleteRelationshipService(relationships, GetRelationshipService(relationships), allow).delete(workspace.id, edge.id, principal)
+        }
     }
 
     @Test

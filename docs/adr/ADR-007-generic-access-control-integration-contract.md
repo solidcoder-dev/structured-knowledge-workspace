@@ -19,6 +19,15 @@ contracts below are implemented and covered by integration tests.
 
 ## Decision
 
+The current HTTP integration seam is `X-Principal-Id`. It supplies an opaque
+`PrincipalId` to the application and is not authentication or proof of identity.
+Authentication remains outside SKW and may replace this resolver later.
+
+Namespaces use `[a-z][a-z0-9]*(?:-[a-z0-9]+)*` (1–64 characters). A qualified
+knowledge identifier is `namespace.local`; the namespace is the first segment
+before `.`, while the local identifier follows the existing property/type
+identifier grammar. Namespace strings themselves never contain `.`.
+
 Access Control is a separate domain concern from Knowledge. The authorization
 kernel receives an authenticated `PrincipalId` and a requested operation; it does
 not know about users, applications, agents, products, or other consumer types.

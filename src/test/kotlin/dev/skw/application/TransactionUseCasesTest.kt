@@ -1,5 +1,6 @@
 package dev.skw.application
 
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.entry.CreateEntryService
 import dev.skw.application.entry.DeleteEntryPropertyService
 import dev.skw.application.entry.DeleteEntryService
@@ -26,6 +27,7 @@ import dev.skw.application.transaction.SetEntryPropertyMutation
 import dev.skw.application.transaction.TransactionCommand
 import dev.skw.application.transaction.TransactionMutationFailed
 import dev.skw.domain.Version
+import dev.skw.domain.accesscontrol.PrincipalId
 import dev.skw.domain.entry.Entry
 import dev.skw.domain.entry.EntryId
 import dev.skw.domain.property.PropertyName
@@ -43,6 +45,8 @@ import java.util.UUID
 
 class TransactionUseCasesTest {
     private val now = Instant.parse("2026-01-01T00:00:00Z")
+    private val principal = PrincipalId("test")
+    private val allow = AuthorizeUseCase { _, _, _, _ -> }
 
     @Test
     fun `mutations execute in order and local refs resolve only to prior entries`() {
@@ -60,6 +64,7 @@ class TransactionUseCasesTest {
                             RelationshipType("supports"),
                         ),
                     ),
+                    principal = principal,
                 ),
             )
         assertEquals(listOf("a", "b"), result.createdEntryIds.keys.toList())
@@ -88,6 +93,7 @@ class TransactionUseCasesTest {
                     TransactionCommand(
                         duplicate.workspace.id,
                         listOf(CreateEntryMutation(localRef = LocalEntryRef("a")), CreateEntryMutation(localRef = LocalEntryRef("a"))),
+                        principal = principal,
                     ),
                 )
             }
@@ -107,6 +113,7 @@ class TransactionUseCasesTest {
                             ),
                             CreateEntryMutation(localRef = LocalEntryRef("later")),
                         ),
+                        principal = principal,
                     ),
                 )
             }
@@ -129,6 +136,7 @@ class TransactionUseCasesTest {
                             .DeleteEntryPropertyMutation(entry.id, Version.of(3), PropertyName("absent")),
                         SetEntryPropertyMutation(entry.id, Version.of(3), PropertyName("z"), PropertyValue.StringValue("last")),
                     ),
+                    principal = principal,
                 ),
             )
         assertEquals(
@@ -152,14 +160,15 @@ class TransactionUseCasesTest {
         val service =
             ExecuteTransactionService(
                 FakeWorkspaces(workspace),
-                CreateEntryService(FakeWorkspaces(workspace), entries, relationships, ImmediateTransaction),
-                SetEntryPropertyService(entries),
-                DeleteEntryPropertyService(entries),
-                DeleteEntryService(entries),
-                CreateRelationshipService(FakeWorkspaces(workspace), entries, relationships),
+                CreateEntryService(FakeWorkspaces(workspace), entries, relationships, ImmediateTransaction, allow),
+                SetEntryPropertyService(entries, authorize = allow),
+                DeleteEntryPropertyService(entries, authorize = allow),
+                DeleteEntryService(entries, allow),
+                CreateRelationshipService(FakeWorkspaces(workspace), entries, relationships, allow),
                 GetRelationshipService(relationships),
-                DeleteRelationshipService(relationships),
+                DeleteRelationshipService(relationships, GetRelationshipService(relationships), allow),
                 ImmediateTransaction,
+                allow,
             )
     }
 

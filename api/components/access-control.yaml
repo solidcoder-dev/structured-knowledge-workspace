@@ -3,7 +3,7 @@ PrincipalId:
   minLength: 1
   maxLength: 255
   pattern: '^[!-~]+$'
-  description: Opaque identifier for the authenticated principal. Its meaning is outside SKW.
+  description: Opaque identifier supplied by the integration boundary. X-Principal-Id is a temporary identity seam, not authentication; authentication remains outside SKW.
 
 Permission:
   type: string

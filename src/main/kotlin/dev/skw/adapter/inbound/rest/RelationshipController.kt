@@ -28,6 +28,7 @@ class RelationshipController(
     private val listEntryRelationships: ListEntryRelationshipsUseCase,
     private val cursorCodec: RelationshipCursorCodec,
     private val idempotent: IdempotentRestExecutor,
+    private val principalResolver: PrincipalResolver = PrincipalResolver(),
 ) : RelationshipsApi {
     override fun createRelationship(
         workspaceId: UUID,
@@ -35,12 +36,24 @@ class RelationshipController(
         createRelationshipRequest: CreateRelationshipRequest,
     ): ResponseEntity<Relationship> =
         idempotent.execute(
-            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/relationships", workspaceId.toString()),
+            IdempotencyScope(
+                "POST",
+                "/api/v1/workspaces/{workspaceId}/relationships",
+                workspaceId.toString(),
+                principalResolver.resolve().value,
+            ),
             idempotencyKey,
             createRelationshipRequest,
             Relationship::class.java,
         ) {
-            val created = createRelationship.create(RelationshipRestMapper.toCreateCommand(workspaceId, createRelationshipRequest))
+            val created =
+                createRelationship.create(
+                    RelationshipRestMapper
+                        .toCreateCommand(
+                            workspaceId,
+                            createRelationshipRequest,
+                        ).copy(principal = principalResolver.resolve()),
+                )
             ResponseEntity
                 .created(URI.create("/api/v1/workspaces/$workspaceId/relationships/${created.id}"))
                 .body(RelationshipRestMapper.toRest(created))
@@ -56,7 +69,7 @@ class RelationshipController(
         workspaceId: UUID,
         relationshipId: UUID,
     ): ResponseEntity<Unit> {
-        deleteRelationship.delete(WorkspaceId(workspaceId), RelationshipId(relationshipId))
+        deleteRelationship.delete(WorkspaceId(workspaceId), RelationshipId(relationshipId), principalResolver.resolve())
         return ResponseEntity.noContent().build()
     }
 

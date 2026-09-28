@@ -1,6 +1,7 @@
 package dev.skw.application.transaction
 
 import dev.skw.application.accesscontrol.AuthorizeUseCase
+import dev.skw.application.accesscontrol.requirePrincipal
 import dev.skw.application.entry.CreateEntryCommand
 import dev.skw.application.entry.CreateEntryService
 import dev.skw.application.entry.DeleteEntryPropertyService
@@ -188,20 +189,20 @@ class ExecuteTransactionService(
     private val getRelationship: GetRelationshipUseCase,
     private val deleteRelationship: DeleteRelationshipUseCase,
     private val transactionRunner: TransactionRunner,
-    private val authorize: AuthorizeUseCase? = null,
+    private val authorize: AuthorizeUseCase,
 ) : ExecuteTransactionUseCase {
     override fun execute(command: TransactionCommand): TransactionResult {
         if (command.mutations.size !in 1..100) throw InvalidTransactionSize(command.mutations.size)
-        preAuthorize(command)
         return transactionRunner.inTransaction {
             if (workspaceRepository.findById(command.workspaceId) == null) {
                 throw dev.skw.application.workspace
                     .WorkspaceNotFound(command.workspaceId)
             }
+            preAuthorize(command)
             val context = TransactionExecutionContext()
             command.mutations.forEachIndexed { index, mutation ->
                 try {
-                    executeMutation(command.workspaceId, mutation, context)
+                    executeMutation(command.workspaceId, command.principal, mutation, context)
                 } catch (failure: RuntimeException) {
                     throw TransactionMutationFailed(index, failure)
                 }
@@ -211,12 +212,12 @@ class ExecuteTransactionService(
     }
 
     private fun preAuthorize(command: TransactionCommand) {
-        val principal = command.principal ?: return
+        val principal = requirePrincipal(command.principal)
 
         fun check(
             permission: Permission,
             namespace: Namespace? = null,
-        ) = authorize?.authorize(principal, command.workspaceId, permission, namespace)
+        ) = authorize.authorize(principal, command.workspaceId, permission, namespace)
         command.mutations.forEach { mutation ->
             when (mutation) {
                 is CreateEntryMutation -> {
@@ -239,6 +240,7 @@ class ExecuteTransactionService(
 
     private fun executeMutation(
         workspaceId: WorkspaceId,
+        principal: PrincipalId?,
         mutation: TransactionMutation,
         context: TransactionExecutionContext,
     ) {
@@ -247,7 +249,7 @@ class ExecuteTransactionService(
                 mutation.localRef?.let(context::reserveLocal)
                 val result =
                     createEntry.create(
-                        CreateEntryCommand(workspaceId, mutation.properties, mutation.initialRelationships),
+                        CreateEntryCommand(workspaceId, mutation.properties, mutation.initialRelationships, principal),
                     )
                 mutation.localRef?.let { ref ->
                     context.bindLocal(ref, result.entry.id)
@@ -263,6 +265,7 @@ class ExecuteTransactionService(
                         mutation.expectedVersion,
                         mutation.property,
                         mutation.value,
+                        principal,
                     ),
                 )
             is DeleteEntryPropertyMutation ->
@@ -272,10 +275,11 @@ class ExecuteTransactionService(
                         mutation.entryId,
                         mutation.expectedVersion,
                         mutation.property,
+                        principal,
                     ),
                 )
             is DeleteEntryMutation -> {
-                deleteEntry.delete(workspaceId, mutation.entryId, mutation.expectedVersion)
+                deleteEntry.delete(workspaceId, mutation.entryId, mutation.expectedVersion, principal)
                 context.deleteEntry(mutation.entryId)
             }
             is CreateRelationshipMutation ->
@@ -286,12 +290,13 @@ class ExecuteTransactionService(
                             context.resolve(mutation.sourceEntryRef),
                             context.resolve(mutation.targetEntryRef),
                             mutation.type,
+                            principal,
                         ),
                     ),
                 )
             is DeleteRelationshipMutation -> {
                 getRelationship.get(workspaceId, mutation.relationshipId)
-                deleteRelationship.delete(workspaceId, mutation.relationshipId)
+                deleteRelationship.delete(workspaceId, mutation.relationshipId, principal)
                 context.deleteRelationship(mutation.relationshipId)
             }
         }

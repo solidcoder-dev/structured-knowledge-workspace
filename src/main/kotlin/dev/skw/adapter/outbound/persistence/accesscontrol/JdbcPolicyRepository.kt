@@ -26,8 +26,8 @@ class JdbcPolicyRepository(
             """INSERT INTO skw.policies
                    (workspace_id, principal_id, scope_type, namespace)
                VALUES (:workspaceId, :principalId, :scopeType, :namespace)
-               ON CONFLICT (workspace_id, principal_id, scope_type)
-               DO UPDATE SET namespace = EXCLUDED.namespace""",
+               ON CONFLICT (workspace_id, principal_id, scope_type, namespace)
+               DO NOTHING""",
             MapSqlParameterSource()
                 .addValue("workspaceId", workspaceId.value)
                 .addValue("principalId", policy.principalId.value)
@@ -35,13 +35,14 @@ class JdbcPolicyRepository(
                 .addValue("namespace", namespace),
         )
         jdbc.update(
-            "DELETE FROM skw.policy_permissions WHERE workspace_id = :workspaceId AND principal_id = :principalId AND scope_type = :scopeType",
+            "DELETE FROM skw.policy_permissions WHERE workspace_id = :workspaceId AND principal_id = :principalId AND scope_type = :scopeType AND namespace IS NOT DISTINCT FROM :namespace",
             MapSqlParameterSource()
                 .addValue(
                     "workspaceId",
                     workspaceId.value,
                 ).addValue("principalId", policy.principalId.value)
-                .addValue("scopeType", scopeType),
+                .addValue("scopeType", scopeType)
+                .addValue("namespace", namespace),
         )
         Permission.entries.filter { policy.allows(policy.principalId, it, policy.scope) }.forEach { permission ->
             jdbc.update(

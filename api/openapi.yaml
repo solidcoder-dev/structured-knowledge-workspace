@@ -11,6 +11,7 @@ info:
     to the consuming framework.
 
     All timestamps are UTC. Property names and relationship types are case-sensitive.
+    Protected mutations require X-Principal-Id. This header is a temporary integration identity seam, not authentication; a future authenticated principal resolver may replace it without changing SKW application services.
     POST operations that accept `Idempotency-Key` scope the key to the operation target.
     Keys contain 1–255 visible ASCII characters without spaces.
     Reusing a key with the same payload returns the original
