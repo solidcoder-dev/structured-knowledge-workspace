@@ -1,0 +1,103 @@
+policies:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/PrincipalId'
+  get:
+    operationId: listPolicies
+    tags:
+      - Access Control
+    summary: List Workspace policies
+    description: Lists policies in the Workspace, including Workspace and namespace scopes.
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: Policy page.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/access-control.yaml#/PolicyPage'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+
+workspacePolicy:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/PolicyPrincipalId'
+    - $ref: '../components/parameters.yaml#/PrincipalId'
+  put:
+    operationId: replaceWorkspacePolicy
+    tags:
+      - Access Control
+    summary: Replace a Workspace policy
+    description: Replaces all permissions granted to a Principal at Workspace scope.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/access-control.yaml#/PolicyRequest'
+    responses:
+      '200':
+        description: Workspace policy replaced.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/access-control.yaml#/Policy'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+  delete:
+    operationId: deleteWorkspacePolicy
+    tags:
+      - Access Control
+    summary: Delete a Workspace policy
+    responses:
+      '204':
+        description: Workspace policy deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+
+namespacePolicy:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/PolicyPrincipalId'
+    - $ref: '../components/parameters.yaml#/Namespace'
+    - $ref: '../components/parameters.yaml#/PrincipalId'
+  put:
+    operationId: replaceNamespacePolicy
+    tags:
+      - Access Control
+    summary: Replace a namespace policy
+    description: Replaces all permissions granted to a Principal for one Namespace in the Workspace.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/access-control.yaml#/PolicyRequest'
+    responses:
+      '200':
+        description: Namespace policy replaced.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/access-control.yaml#/Policy'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'
+  delete:
+    operationId: deleteNamespacePolicy
+    tags:
+      - Access Control
+    summary: Delete a namespace policy
+    responses:
+      '204':
+        description: Namespace policy deleted.
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'

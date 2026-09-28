@@ -24,6 +24,10 @@ tags:
     description: Process availability checks.
   - name: Workspaces
     description: Isolation boundaries for knowledge, access and search.
+  - name: Namespaces
+    description: Registered vocabulary prefixes for namespaced knowledge.
+  - name: Access Control
+    description: Generic principal policies scoped to a Workspace or Namespace.
   - name: Entries
     description: Generic units of knowledge described by Properties.
   - name: Relationships
@@ -39,6 +43,14 @@ paths:
     $ref: './paths/workspaces.yaml#/workspaces'
   /api/v1/workspaces/{workspaceId}:
     $ref: './paths/workspaces.yaml#/workspace'
+  /api/v1/workspaces/{workspaceId}/namespaces:
+    $ref: './paths/namespaces.yaml#/namespaces'
+  /api/v1/workspaces/{workspaceId}/policies:
+    $ref: './paths/policies.yaml#/policies'
+  /api/v1/workspaces/{workspaceId}/policies/{principalId}:
+    $ref: './paths/policies.yaml#/workspacePolicy'
+  /api/v1/workspaces/{workspaceId}/policies/{principalId}/namespaces/{namespace}:
+    $ref: './paths/policies.yaml#/namespacePolicy'
   /api/v1/workspaces/{workspaceId}/properties/{propertyName}:
     $ref: './paths/workspaces.yaml#/workspaceProperty'
   /api/v1/workspaces/{workspaceId}/entries:
@@ -75,6 +87,12 @@ components:
       $ref: './components/parameters.yaml#/IfMatch'
     IdempotencyKey:
       $ref: './components/parameters.yaml#/IdempotencyKey'
+    PrincipalId:
+      $ref: './components/parameters.yaml#/PrincipalId'
+    Namespace:
+      $ref: './components/parameters.yaml#/Namespace'
+    PolicyPrincipalId:
+      $ref: './components/parameters.yaml#/PolicyPrincipalId'
   headers:
     ETag:
       $ref: './components/headers.yaml#/ETag'
@@ -117,3 +135,21 @@ components:
       $ref: './components/errors.yaml#/Problem'
     CreateEntryResponse:
       $ref: './components/entries.yaml#/CreateEntryResponse'
+    PrincipalId:
+      $ref: './components/access-control.yaml#/PrincipalId'
+    Permission:
+      $ref: './components/access-control.yaml#/Permission'
+    Policy:
+      $ref: './components/access-control.yaml#/Policy'
+    PolicyPage:
+      $ref: './components/access-control.yaml#/PolicyPage'
+    PolicyRequest:
+      $ref: './components/access-control.yaml#/PolicyRequest'
+    NamespaceName:
+      $ref: './components/namespaces.yaml#/NamespaceName'
+    Namespace:
+      $ref: './components/namespaces.yaml#/Namespace'
+    NamespacePage:
+      $ref: './components/namespaces.yaml#/NamespacePage'
+    RegisterNamespaceRequest:
+      $ref: './components/namespaces.yaml#/RegisterNamespaceRequest'

@@ -1,0 +1,56 @@
+namespaces:
+  parameters:
+    - $ref: '../components/parameters.yaml#/WorkspaceId'
+    - $ref: '../components/parameters.yaml#/PrincipalId'
+  get:
+    operationId: listNamespaces
+    tags:
+      - Namespaces
+    summary: List registered namespaces
+    description: Returns vocabulary namespaces registered in the Workspace.
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: Namespace page.
+        content:
+          application/json:
+            schema:
+              $ref: '../components/namespaces.yaml#/NamespacePage'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+  post:
+    operationId: registerNamespace
+    tags:
+      - Namespaces
+    summary: Register a namespace
+    description: Registers a vocabulary prefix. Duplicate registration returns 409.
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/namespaces.yaml#/RegisterNamespaceRequest'
+    responses:
+      '201':
+        description: Namespace registered.
+        headers:
+          Location:
+            $ref: '../components/headers.yaml#/Location'
+        content:
+          application/json:
+            schema:
+              $ref: '../components/namespaces.yaml#/Namespace'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '422':
+        $ref: '../components/responses.yaml#/UnprocessableEntity'

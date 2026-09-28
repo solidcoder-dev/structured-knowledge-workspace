@@ -1,0 +1,62 @@
+PrincipalId:
+  type: string
+  minLength: 1
+  maxLength: 255
+  pattern: '^[!-~]+$'
+  description: Opaque identifier for the authenticated principal. Its meaning is outside SKW.
+
+Permission:
+  type: string
+  enum:
+    - READ
+    - CREATE
+    - UPDATE
+    - DELETE
+
+Policy:
+  type: object
+  required:
+    - principalId
+    - workspaceId
+    - permissions
+  properties:
+    principalId:
+      $ref: './access-control.yaml#/PrincipalId'
+    workspaceId:
+      type: string
+      format: uuid
+    namespace:
+      $ref: './namespaces.yaml#/NamespaceName'
+      description: Omitted for a Workspace scope; present for a Workspace plus Namespace scope.
+    permissions:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: './access-control.yaml#/Permission'
+
+PolicyPage:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: './access-control.yaml#/Policy'
+    nextCursor:
+      type: string
+      description: Omitted when there is no next page.
+
+PolicyRequest:
+  type: object
+  additionalProperties: false
+  required:
+    - permissions
+  properties:
+    permissions:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: './access-control.yaml#/Permission'

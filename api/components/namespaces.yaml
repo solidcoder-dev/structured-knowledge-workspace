@@ -1,0 +1,41 @@
+NamespaceName:
+  type: string
+  pattern: '^[a-z][a-z0-9]*$'
+  minLength: 1
+  maxLength: 64
+  description: Lowercase vocabulary prefix used by namespaced Property names and Relationship types.
+  example: alpha
+
+Namespace:
+  type: object
+  required:
+    - name
+    - workspaceId
+  properties:
+    name:
+      $ref: './namespaces.yaml#/NamespaceName'
+    workspaceId:
+      type: string
+      format: uuid
+
+NamespacePage:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: './namespaces.yaml#/Namespace'
+    nextCursor:
+      type: string
+      description: Omitted when there is no next page.
+
+RegisterNamespaceRequest:
+  type: object
+  additionalProperties: false
+  required:
+    - name
+  properties:
+    name:
+      $ref: './namespaces.yaml#/NamespaceName'

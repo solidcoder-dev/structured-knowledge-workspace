@@ -66,3 +66,26 @@ IdempotencyKey:
     minLength: 1
     maxLength: 255
     pattern: '^[!-~]+$'
+PrincipalId:
+  name: X-Principal-Id
+  in: header
+  required: true
+  description: Trusted boundary value identifying the authenticated principal; authentication is outside SKW.
+  schema:
+    $ref: './access-control.yaml#/PrincipalId'
+
+Namespace:
+  name: namespace
+  in: path
+  required: true
+  description: Registered vocabulary namespace.
+  schema:
+    $ref: './namespaces.yaml#/NamespaceName'
+
+PolicyPrincipalId:
+  name: principalId
+  in: path
+  required: true
+  description: Principal whose policy is being addressed.
+  schema:
+    $ref: './access-control.yaml#/PrincipalId'
