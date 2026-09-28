@@ -43,9 +43,10 @@ class AuthorizationServiceTest {
         val denial = AuthorizationDenied(principal, workspace, Permission.DELETE, alpha)
         val port = RecordingAuthorizationPort(denial)
 
-        val thrown = assertThrows(AuthorizationDenied::class.java) {
-            AuthorizationService(port).authorize(principal, workspace, Permission.DELETE, alpha)
-        }
+        val thrown =
+            assertThrows(AuthorizationDenied::class.java) {
+                AuthorizationService(port).authorize(principal, workspace, Permission.DELETE, alpha)
+            }
 
         assertEquals(denial, thrown)
     }

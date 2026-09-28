@@ -40,9 +40,10 @@ class AccessControlDomainTest {
 
     @Test
     fun `authorization denies by default and keeps workspace structural scope separate`() {
-        val authorizer = Authorizer(
-            listOf(Policy(principal, Scope.Workspace, setOf(Permission.CREATE, Permission.DELETE)))
-        )
+        val authorizer =
+            Authorizer(
+                listOf(Policy(principal, Scope.Workspace, setOf(Permission.CREATE, Permission.DELETE))),
+            )
 
         assertTrue(authorizer.isAllowed(principal, Permission.CREATE, Scope.Workspace))
         assertFalse(authorizer.isAllowed(principal, Permission.CREATE, Scope.WorkspaceNamespace(alpha)))
