@@ -177,6 +177,7 @@ class WorkspaceConfiguration {
         createRelationship: CreateRelationshipUseCase,
         getRelationship: GetRelationshipUseCase,
         deleteRelationship: DeleteRelationshipUseCase,
+        authorize: AuthorizeUseCase?,
     ): ExecuteTransactionUseCase =
         ExecuteTransactionService(
             workspaces,
@@ -188,5 +189,6 @@ class WorkspaceConfiguration {
             getRelationship,
             deleteRelationship,
             transactions,
+            authorize,
         )
 }

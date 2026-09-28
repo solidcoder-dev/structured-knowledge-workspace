@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
+import dev.skw.domain.accesscontrol.PrincipalId
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
@@ -21,14 +22,15 @@ class TransactionController(
     fun executeTransaction(
         @PathVariable workspaceId: UUID,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @RequestHeader("X-Principal-Id", required = false) principalId: String?,
         @RequestBody transactionRequest: TransactionRequestDto,
     ): ResponseEntity<TransactionResponse> =
         idempotent.execute(
-            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/transactions", workspaceId.toString()),
+            IdempotencyScope("POST", "/api/v1/workspaces/{workspaceId}/transactions", workspaceId.toString(), principalId),
             idempotencyKey,
             transactionRequest,
             TransactionResponse::class.java,
         ) {
-            ResponseEntity.ok(executeTransaction.execute(mapper.toCommand(workspaceId, transactionRequest)).let(mapper::toResponse))
+            ResponseEntity.ok(executeTransaction.execute(mapper.toCommand(workspaceId, transactionRequest).copy(principal = principalId?.let(::PrincipalId))).let(mapper::toResponse))
         }
 }

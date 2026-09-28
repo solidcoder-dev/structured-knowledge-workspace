@@ -6,6 +6,7 @@ import dev.skw.application.entry.DeleteEntryPropertyService
 import dev.skw.application.entry.DeleteEntryService
 import dev.skw.application.entry.InitialRelationshipCommand
 import dev.skw.application.entry.SetEntryPropertyService
+import dev.skw.application.accesscontrol.AuthorizeUseCase
 import dev.skw.application.port.out.TransactionRunner
 import dev.skw.application.port.out.WorkspaceRepository
 import dev.skw.application.relationship.CreateRelationshipCommand
@@ -21,6 +22,9 @@ import dev.skw.domain.relationship.Relationship
 import dev.skw.domain.relationship.RelationshipId
 import dev.skw.domain.relationship.RelationshipType
 import dev.skw.domain.workspace.WorkspaceId
+import dev.skw.domain.accesscontrol.Namespace
+import dev.skw.domain.accesscontrol.Permission
+import dev.skw.domain.accesscontrol.PrincipalId
 
 private val LOCAL_REF_PATTERN = Regex("^[a-z][a-z0-9_-]{0,63}$")
 
@@ -101,6 +105,7 @@ data class DeleteRelationshipMutation(
 data class TransactionCommand(
     val workspaceId: WorkspaceId,
     val mutations: List<TransactionMutation>,
+    val principal: PrincipalId? = null,
 )
 
 data class TransactionResult(
@@ -183,9 +188,11 @@ class ExecuteTransactionService(
     private val getRelationship: GetRelationshipUseCase,
     private val deleteRelationship: DeleteRelationshipUseCase,
     private val transactionRunner: TransactionRunner,
+    private val authorize: AuthorizeUseCase? = null,
 ) : ExecuteTransactionUseCase {
     override fun execute(command: TransactionCommand): TransactionResult {
         if (command.mutations.size !in 1..100) throw InvalidTransactionSize(command.mutations.size)
+        preAuthorize(command)
         return transactionRunner.inTransaction {
             if (workspaceRepository.findById(command.workspaceId) == null) {
                 throw dev.skw.application.workspace
@@ -200,6 +207,25 @@ class ExecuteTransactionService(
                 }
             }
             context.result()
+        }
+    }
+
+    private fun preAuthorize(command: TransactionCommand) {
+        val principal = command.principal ?: return
+        fun check(permission: Permission, namespace: Namespace? = null) = authorize?.authorize(principal, command.workspaceId, permission, namespace)
+        command.mutations.forEach { mutation ->
+            when (mutation) {
+                is CreateEntryMutation -> {
+                    check(Permission.CREATE)
+                    mutation.properties.keys.forEach { check(Permission.CREATE, Namespace.from(it.value)) }
+                    mutation.initialRelationships.forEach { check(Permission.CREATE, Namespace.from(it.type.value)) }
+                }
+                is SetEntryPropertyMutation -> check(Permission.UPDATE, Namespace.from(mutation.property.value))
+                is DeleteEntryPropertyMutation -> check(Permission.DELETE, Namespace.from(mutation.property.value))
+                is DeleteEntryMutation -> check(Permission.DELETE)
+                is CreateRelationshipMutation -> check(Permission.CREATE, Namespace.from(mutation.type.value))
+                is DeleteRelationshipMutation -> check(Permission.DELETE, Namespace.from(getRelationship.get(command.workspaceId, mutation.relationshipId).type.value))
+            }
         }
     }
 
